@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install *)",
+      "Bash(pip3 install *)",
+      "Bash(pip3 --version)",
+      "Bash(python3 -c \"from bs4 import BeautifulSoup; print\\('ok'\\)\")",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

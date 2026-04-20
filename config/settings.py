@@ -13,8 +13,12 @@ DEFAULT_TIMEZONE = "America/Los_Angeles"
 
 # Maps Google Calendar name → list of scraper module names (under scrapers/)
 CALENDARS: dict[str, list[str]] = {
-    "Main Aggregated Calendar": ["partiful", "luma", "funcheap", "brokeassstuart"],
-    "Bars/Clubs": ["makeoutroom", "dnalounge"],
-    "Arts/Culture": ["decentered", "the_faight"],
-    "Music": ["regency_ballroom", "great_american_music_hall", "sf_jazz"],
+    "SF Partiful": ["partiful"],
+    "SF Luma": ["luma"],
+    "SF Fun Cheap": ["funcheap"],
+    "SF Broke Ass Stuart": ["brokeassstuart"],
+    "SF Bars": ["makeoutroom"],
+    "SF Clubs": ["dnalounge"],
+    "SF Arts/Culture": ["decentered", "the_faight"],
+    "SF Music": ["regency_ballroom", "great_american_music_hall", "sf_jazz"],
 }
