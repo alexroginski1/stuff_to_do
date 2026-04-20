@@ -8,7 +8,16 @@
       "Bash(python3 -c ' *)",
       "WebFetch(domain:luma.com)",
       "Bash(curl -s -L \"https://luma.com/discover\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
-      "Bash(curl -s -L \"https://www.thefaight.com/events\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")"
+      "Bash(curl -s -L \"https://www.thefaight.com/events\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "WebFetch(domain:decentered.org)",
+      "WebFetch(domain:brokeassstuart.dothebay.com)",
+      "WebFetch(domain:www.dnalounge.com)",
+      "WebFetch(domain:www.theregencyballroom.com)",
+      "WebFetch(domain:gamh.com)",
+      "WebFetch(domain:www.makeoutroom.com)",
+      "WebFetch(domain:events.decentered.org)",
+      "Bash(curl -s \"https://aegwebprod.blob.core.windows.net/json/data/data_rv1/541/search_queries.json\")",
+      "Bash(curl -s \"https://cdn.dnalounge.com/calendar/dnalounge.ics\")"
     ]
   }
 }
