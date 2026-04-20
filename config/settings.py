@@ -19,6 +19,7 @@ CALENDARS: dict[str, list[str]] = {
     "SF Broke Ass Stuart": ["brokeassstuart"],
     "SF Bars": ["makeoutroom"],
     "SF Clubs": ["dnalounge"],
-    "SF Arts/Culture": ["decentered", "the_faight"],
+    "SF Arts/Culture": ["decentered"],
+    "SF The Faight": ["the_faight"],
     "SF Music": ["regency_ballroom", "great_american_music_hall", "sf_jazz"],
 }

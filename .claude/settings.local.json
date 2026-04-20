@@ -5,7 +5,10 @@
       "Bash(pip3 install *)",
       "Bash(pip3 --version)",
       "Bash(python3 -c \"from bs4 import BeautifulSoup; print\\('ok'\\)\")",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "WebFetch(domain:luma.com)",
+      "Bash(curl -s -L \"https://luma.com/discover\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")",
+      "Bash(curl -s -L \"https://www.thefaight.com/events\" -H \"User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\")"
     ]
   }
 }
