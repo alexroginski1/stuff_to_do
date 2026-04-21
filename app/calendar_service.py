@@ -12,7 +12,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from app.event_model import Event
-from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, TOKEN_FILE
+from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SCRAPER_LABELS, TOKEN_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,12 @@ def _gcal_datetime(dt: datetime) -> dict:
 
 def _build_body(event: Event) -> dict:
     end = event.end_time or (event.start_time + timedelta(hours=1))
-    description = (event.description or "") + f"\n\nSource: {event.source_url}"
+    label = SCRAPER_LABELS.get(event.source, event.source)
+    parts = [label, event.source_url]
+    if event.description:
+        parts.append("")
+        parts.append(event.description)
+    description = "\n".join(parts)
     return {
         "summary": event.name,
         "description": description.strip(),

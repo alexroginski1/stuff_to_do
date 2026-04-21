@@ -21,28 +21,47 @@ def _parse_page(html: str) -> List[Event]:
     soup = BeautifulSoup(html, "html.parser")
     events: List[Event] = []
 
-    for event in soup.select(".elementor-post, article"):
-        title_el = event.select_one("h2 a, h3 a")
+    for event in soup.select(".seetickets-list-event-container"):
+        # Title + URL
+        title_el = event.select_one(".event-title a")
         if not title_el:
             continue
 
         name = title_el.get_text(strip=True)
         url = title_el.get("href")
 
-        date_el = event.select_one("time")
+        # Skip private events if desired
+        if name.strip().upper() == "PRIVATE EVENT":
+            continue
+
+        # Date (e.g. "Wed Apr 22")
+        date_el = event.select_one(".event-date")
+        # Prefer showtime over doortime
+        time_el = event.select_one(".see-showtime") or event.select_one(".see-doortime")
+
         start = None
-        if date_el and date_el.get("datetime"):
-            try:
-                start = datetime.fromisoformat(date_el["datetime"]).astimezone(TZ)
-            except Exception:
-                pass
+        try:
+            if date_el:
+                date_str = date_el.get_text(strip=True)
+                time_str = time_el.get_text(strip=True) if time_el else "8:00PM"
+
+                # HTML has no year → assume current year
+                dt_str = f"{date_str} {time_str} {datetime.now().year}"
+                start = datetime.strptime(dt_str, "%a %b %d %I:%M%p %Y")
+                start = start.replace(tzinfo=TZ)
+        except Exception:
+            logger.exception("Failed parsing datetime for event: %s", name)
+
+        # Optional description (supporting artists)
+        desc_el = event.select_one(".supporting-talent")
+        description = desc_el.get_text(strip=True) if desc_el else None
 
         events.append(Event(
             name=name,
             start_time=start or datetime.now(TZ),
             end_time=None,
             location="Great American Music Hall",
-            description=None,
+            description=description,
             source_url=url,
             source=SOURCE,
             unique_key=Event.build_unique_key(name, start or datetime.now(TZ)),

@@ -1,85 +1,132 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-import re
 from datetime import datetime
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
 
 from app.event_model import Event
-from app.utils import fetch_html, parse_iso_datetime
+from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
 SOURCE = "luma"
-URL = "https://luma.com/discover"
+_BASE_URL = "https://luma.com/sf"
+_TZ = ZoneInfo("America/Los_Angeles")
 
 
-def _parse_location(geo: Optional[dict]) -> Optional[str]:
-    if not geo:
+def fetch_page_events(url: str, source: str) -> List[Event]:
+    try:
+        html = fetch_html(url)
+    except Exception as exc:
+        logger.warning(f"[{source}] fetch failed: {exc}")
+        return []
+
+    try:
+        data = _extract_json(html)
+        events = _parse_events(data)
+
+        # override source + fix URLs if needed
+        for e in events:
+            e.source = source
+
+        logger.info(f"[{source}] parsed {len(events)} events")
+        return events
+
+    except Exception as exc:
+        logger.exception(f"[{source}] parse failed: {exc}")
+        return []
+        
+def _parse_dt(s: Optional[str]) -> Optional[datetime]:
+    if not s:
         return None
-    return geo.get("full_address") or geo.get("city_state") or geo.get("city")
+    try:
+        # ISO format from Luma
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(_TZ)
+    except Exception:
+        return None
 
 
-def _parse_page(next_data: dict) -> List[Event]:
-    initial_data = next_data["props"]["pageProps"]["initialData"]
-    featured = initial_data.get("featured_place", {})
-    entries = featured.get("events", [])
+def _extract_json(html: str) -> dict:
+    soup = BeautifulSoup(html, "html.parser")
+    script = soup.find("script", id="__NEXT_DATA__")
+    if not script:
+        raise ValueError("Missing __NEXT_DATA__")
 
-    events: List[Event] = []
-    seen: set[str] = set()
+    return json.loads(script.string)
 
-    for entry in entries:
-        ev = entry.get("event", {})
-        name = ev.get("name", "").strip()
-        start_raw = ev.get("start_at") or entry.get("start_at")
-        if not name or not start_raw:
-            continue
 
-        try:
-            start_time = parse_iso_datetime(start_raw)
-        except Exception:
-            continue
+def _extract_events(data: dict) -> List[dict]:
+    """
+    Luma nests events deeply. We recursively search for dicts containing 'event'.
+    """
+    events = []
 
-        end_raw = ev.get("end_at")
-        end_time = parse_iso_datetime(end_raw) if end_raw else None
+    def walk(obj):
+        if isinstance(obj, dict):
+            if "event" in obj and isinstance(obj["event"], dict):
+                events.append(obj["event"])
+            for v in obj.values():
+                walk(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                walk(item)
 
-        slug = ev.get("url", "")
-        source_url = f"https://lu.ma/{slug}" if not slug.startswith("http") else slug
-
-        location = _parse_location(ev.get("geo_address_info"))
-
-        api_id = ev.get("api_id") or entry.get("api_id", "")
-        if api_id in seen:
-            continue
-        if api_id:
-            seen.add(api_id)
-
-        events.append(Event(
-            name=name,
-            start_time=start_time,
-            end_time=end_time,
-            location=location,
-            description=None,
-            source_url=source_url,
-            source=SOURCE,
-            unique_key=Event.build_unique_key(name, start_time),
-        ))
-
-    logger.info(f"[{SOURCE}] fetched {len(events)} events")
+    walk(data)
     return events
 
 
+def _parse_events(data: dict) -> List[Event]:
+    raw_events = _extract_events(data)
+    results: List[Event] = []
+
+    for ev in raw_events:
+        name = ev.get("name")
+        url_slug = ev.get("url")
+        start = _parse_dt(ev.get("start_at"))
+        end = _parse_dt(ev.get("end_at"))
+
+        if not name or not start:
+            continue
+
+        # Build full URL
+        url = f"https://luma.com/{url_slug}" if url_slug else ""
+
+        # Location (best available)
+        location = None
+        geo = ev.get("geo_address_info") or {}
+        if isinstance(geo, dict):
+            location = geo.get("sublocality") or geo.get("city")
+
+        results.append(Event(
+            name=name,
+            start_time=start,
+            end_time=end,
+            location=location,
+            description=None,
+            source_url=url,
+            source=SOURCE,
+            unique_key=Event.build_unique_key(name, start),
+        ))
+
+    return results
+
+
 def fetch_events() -> List[Event]:
-    html = fetch_html(URL)
-    soup = BeautifulSoup(html, "html.parser")
-    script = soup.find("script", {"id": "__NEXT_DATA__"})
+    try:
+        html = fetch_html(_BASE_URL)
+    except Exception as exc:
+        logger.warning(f"[{SOURCE}] fetch failed: {exc}")
+        return []
 
-    if not script:
-        raise RuntimeError("__NEXT_DATA__ not found on Luma discover page")
-
-    next_data = json.loads(script.string)
-    return _parse_page(next_data)
+    try:
+        data = _extract_json(html)
+        events = _parse_events(data)
+        logger.info(f"[{SOURCE}] parsed {len(events)} events")
+        return events
+    except Exception as exc:
+        logger.exception(f"[{SOURCE}] parse failed: {exc}")
+        return []
