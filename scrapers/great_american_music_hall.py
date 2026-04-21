@@ -40,17 +40,21 @@ def _parse_page(html: str) -> List[Event]:
         time_el = event.select_one(".see-showtime") or event.select_one(".see-doortime")
 
         start = None
+        date_str = ""
+        time_str = ""
         try:
             if date_el:
                 date_str = date_el.get_text(strip=True)
                 time_str = time_el.get_text(strip=True) if time_el else "8:00PM"
-
-                # HTML has no year → assume current year
                 dt_str = f"{date_str} {time_str} {datetime.now().year}"
                 start = datetime.strptime(dt_str, "%a %b %d %I:%M%p %Y")
                 start = start.replace(tzinfo=TZ)
         except Exception:
-            logger.exception("Failed parsing datetime for event: %s", name)
+            pass
+
+        if start is None:
+            logger.warning("Could not parse datetime: %r — %r %r", name, date_str, time_str)
+            continue
 
         # Optional description (supporting artists)
         desc_el = event.select_one(".supporting-talent")
@@ -58,13 +62,13 @@ def _parse_page(html: str) -> List[Event]:
 
         events.append(Event(
             name=name,
-            start_time=start or datetime.now(TZ),
+            start_time=start,
             end_time=None,
             location="Great American Music Hall",
             description=description,
             source_url=url,
             source=SOURCE,
-            unique_key=Event.build_unique_key(name, start or datetime.now(TZ)),
+            unique_key=Event.build_unique_key(name, start),
         ))
 
     return events

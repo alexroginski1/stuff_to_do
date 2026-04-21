@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -20,8 +21,19 @@ _KEY_FIELD = "unique_key"
 _HASH_FIELD = "content_hash"
 _SOURCE_FIELD = "source"
 
+_CLOUD_CLIENT_SECRET_NAME = "calendar-client-secret"
+_CLOUD_TOKEN_SECRET_NAME = "calendar-token"
+
 
 def get_credentials() -> Credentials:
+    from app.gcp import is_cloud
+
+    if is_cloud():
+        return _get_cloud_credentials()
+    return _get_local_credentials()
+
+
+def _get_local_credentials() -> Credentials:
     os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
     creds: Optional[Credentials] = None
 
@@ -36,6 +48,26 @@ def get_credentials() -> Credentials:
             creds = flow.run_local_server(port=8080)
         with open(TOKEN_FILE, "w") as f:
             f.write(creds.to_json())
+
+    return creds
+
+
+def _get_cloud_credentials() -> Credentials:
+    from app.gcp import read_secret, write_secret
+
+    token_json = read_secret(_CLOUD_TOKEN_SECRET_NAME)
+    creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
+
+    if not creds.valid:
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            write_secret(_CLOUD_TOKEN_SECRET_NAME, creds.to_json())
+            logger.info("Cloud token refreshed and saved to Secret Manager")
+        else:
+            raise RuntimeError(
+                "Cloud credentials are invalid and cannot be refreshed non-interactively. "
+                "Run locally to obtain a fresh token.json, then re-upload it to Secret Manager."
+            )
 
     return creds
 

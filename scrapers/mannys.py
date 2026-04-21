@@ -1,110 +1,128 @@
 from __future__ import annotations
 
+# Eventbrite organizer endpoint:
+# https://www.eventbriteapi.com/v3/organizers/{organizer_id}/events/
+
 import logging
 from datetime import datetime
 from typing import List, Optional
 from zoneinfo import ZoneInfo
-from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
+import requests
 
 from app.event_model import Event
-from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "mannys"
-BASE_URL = "https://welcometomannys.com/events"
-TZ = ZoneInfo("America/Los_Angeles")
+SOURCE = "eventbrite"
+_ORGANIZER_ID = "15114280512"
+_BASE_URL = f"https://www.eventbriteapi.com/v3/organizers/{_ORGANIZER_ID}/events/"
+_TZ = ZoneInfo("America/Los_Angeles")
+
+# ⚠️ Hardcoded token (not recommended for production)
+_API_TOKEN = "***REDACTED***"
+
+_HEADERS = {
+    "Authorization": f"Bearer {_API_TOKEN}",
+}
+
+_PAGE_SIZE = 50
+_MAX_PAGES = 10
 
 
-def _parse_datetime(raw: str) -> Optional[datetime]:
-    """
-    Manny's HTML does not provide a strict datetime format.
-    This tries a few common patterns and falls back safely.
-    """
-    if not raw:
+def _parse_dt(s: Optional[str]) -> Optional[datetime]:
+    if not s:
+        return None
+    try:
+        # Eventbrite returns ISO8601 (UTC)
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return dt.astimezone(_TZ)
+    except Exception:
         return None
 
-    raw = raw.strip()
 
-    # Try a few likely formats
-    formats = [
-        "%B %d, %Y %I:%M %p",   # April 20, 2026 7:00 PM
-        "%b %d, %Y %I:%M %p",   # Apr 20, 2026 7:00 PM
-        "%B %d %I:%M %p",       # April 20 7:00 PM
-        "%b %d %I:%M %p",       # Apr 20 7:00 PM
-    ]
+def _fetch_page(page: int) -> dict:
+    params = {
+        "page": page,
+        "page_size": _PAGE_SIZE,
+        "expand": "venue",
+        "order_by": "start_asc",
+        # IMPORTANT: do NOT include "status" (causes 400)
+    }
 
-    for fmt in formats:
-        try:
-            dt = datetime.strptime(raw, fmt)
+    resp = requests.get(_BASE_URL, headers=_HEADERS, params=params, timeout=10)
 
-            # If year missing, assume current year
-            if "%Y" not in fmt:
-                dt = dt.replace(year=datetime.now().year)
+    if not resp.ok:
+        logger.error(f"[{SOURCE}] error response: {resp.text}")
 
-            return dt.replace(tzinfo=TZ)
-        except Exception:
-            continue
-
-    logger.warning("Could not parse datetime: %s", raw)
-    return None
+    resp.raise_for_status()
+    return resp.json()
 
 
-def _parse_page(html: str) -> List[Event]:
-    soup = BeautifulSoup(html, "html.parser")
+def _parse_page(data: dict) -> List[Event]:
     events: List[Event] = []
 
-    # Manny's uses card-based layout
-    for card in soup.select(".event-card"):
-        try:
-            # --- TITLE ---
-            title_el = card.select_one("h3")
-            if not title_el:
-                continue
+    for e in data.get("events", []):
+        # Filter only live events (since API param doesn't work)
+        if e.get("status") != "live":
+            continue
 
-            name = title_el.get_text(strip=True)
+        name = (e.get("name") or {}).get("text")
+        url = e.get("url")
 
-            # --- DATE / TIME ---
-            # Usually stored in h4 (can vary)
-            meta_el = card.select_one("h4")
-            raw_datetime = meta_el.get_text(strip=True) if meta_el else ""
+        start = _parse_dt((e.get("start") or {}).get("utc"))
+        end = _parse_dt((e.get("end") or {}).get("utc"))
 
-            start_time = _parse_datetime(raw_datetime)
+        if not name or not start:
+            continue
 
-            # --- URL ---
-            link_el = card.select_one("a")
-            url = None
-            if link_el and link_el.get("href"):
-                url = urljoin(BASE_URL, link_el.get("href"))
+        # Optional: skip past events
+        if start < datetime.now(tz=_TZ):
+            continue
 
-            # --- DESCRIPTION ---
-            # Manny's cards don't have a clean description field,
-            # so we reuse the meta text if needed
-            description = raw_datetime or None
+        venue = e.get("venue") or {}
+        location_parts = [
+            venue.get("name"),
+            (venue.get("address") or {}).get("localized_address_display"),
+        ]
+        location = ", ".join([p for p in location_parts if p]) or None
 
-            # --- FALLBACK TIME ---
-            if not start_time:
-                start_time = datetime.now(TZ)
+        description = (e.get("description") or {}).get("text")
 
-            events.append(Event(
-                name=name,
-                start_time=start_time,
-                end_time=None,
-                location="Manny's",
-                description=description,
-                source_url=url,
-                source=SOURCE,
-                unique_key=Event.build_unique_key(name, start_time),
-            ))
-
-        except Exception:
-            logger.exception("Failed parsing event card")
+        events.append(Event(
+            name=name.strip(),
+            start_time=start,
+            end_time=end,
+            location=location,
+            description=description,
+            source_url=url,
+            source=SOURCE,
+            unique_key=Event.build_unique_key(name, start),
+        ))
 
     return events
 
 
 def fetch_events() -> List[Event]:
-    html = fetch_html(BASE_URL)
-    return _parse_page(html)
+    all_events: List[Event] = []
+
+    for page in range(1, _MAX_PAGES + 1):
+        try:
+            data = _fetch_page(page)
+        except Exception as exc:
+            logger.warning(f"[{SOURCE}] failed to fetch page {page}: {exc}")
+            break
+
+        page_events = _parse_page(data)
+
+        if not page_events:
+            logger.info(f"[{SOURCE}] no events on page {page}, stopping")
+            break
+
+        all_events.extend(page_events)
+        logger.info(f"[{SOURCE}] page {page}: {len(page_events)} events")
+
+        if not data.get("pagination", {}).get("has_more_items"):
+            break
+
+    return all_events

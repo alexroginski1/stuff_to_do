@@ -1,0 +1,23 @@
+# Google OAuth credentials — never commit these
+client_secret.json
+token.json
+
+# Runtime state
+push_history.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

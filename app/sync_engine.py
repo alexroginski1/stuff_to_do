@@ -3,7 +3,9 @@ from __future__ import annotations
 import importlib
 import logging
 import time
+from datetime import datetime, timedelta
 from typing import List
+from zoneinfo import ZoneInfo
 
 from app.calendar_service import (
     build_service,
@@ -20,6 +22,22 @@ from config.settings import CALENDARS
 logger = logging.getLogger(__name__)
 
 _API_DELAY = 0.1  # seconds between Google Calendar write calls
+_TZ = ZoneInfo("America/Los_Angeles")
+_LOOKAHEAD_DAYS = 92  # ~3 months
+
+
+def _filter_events(events: List[Event]) -> List[Event]:
+    today = datetime.now(tz=_TZ).date()
+    cutoff = today + timedelta(days=_LOOKAHEAD_DAYS)
+    kept = []
+    for e in events:
+        event_date = e.start_time.astimezone(_TZ).date()
+        if event_date < today:
+            continue
+        if event_date > cutoff:
+            continue
+        kept.append(e)
+    return kept
 
 
 def _fetch_safe(scraper_name: str) -> List[Event]:
@@ -86,8 +104,8 @@ def run_sync() -> None:
         for e in raw_events:
             deduped[e.unique_key] = e
 
-        events = list(deduped.values())
-        logger.info(f"[{calendar_name}] {len(events)} unique events to sync")
+        events = _filter_events(list(deduped.values()))
+        logger.info(f"[{calendar_name}] {len(events)} events after date filtering")
 
         stats = _sync_calendar(service, calendar_id, calendar_name, events, history)
         logger.info(

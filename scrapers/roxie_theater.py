@@ -16,9 +16,9 @@ SOURCE = "roxie"
 _BASE_URL = "https://roxie.com/calendar/"
 _TZ = ZoneInfo("America/Los_Angeles")
 
-# You may want to make this dynamic later
-_YEAR = 2026
-_MONTH = 4  # April
+_NOW = datetime.now(tz=_TZ)
+_YEAR = _NOW.year
+_MONTH = _NOW.month
 
 
 def _parse_time(day: int, time_str: str) -> Optional[datetime]:

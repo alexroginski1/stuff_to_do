@@ -15,6 +15,12 @@ History = dict[str, dict[str, str]]  # {calendar_name: {unique_key: iso_timestam
 
 
 def load() -> History:
+    from app.gcp import is_cloud
+
+    if is_cloud():
+        from app.gcp import load_push_history_gcs
+        return load_push_history_gcs()
+
     if not os.path.exists(PUSH_HISTORY_FILE):
         return {}
     try:
@@ -26,6 +32,13 @@ def load() -> History:
 
 
 def save(history: History) -> None:
+    from app.gcp import is_cloud
+
+    if is_cloud():
+        from app.gcp import save_push_history_gcs
+        save_push_history_gcs(history)
+        return
+
     try:
         with open(PUSH_HISTORY_FILE, "w") as f:
             json.dump(history, f, indent=2)
