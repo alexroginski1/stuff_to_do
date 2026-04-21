@@ -1,22 +1,24 @@
-from __future__ import annotations
+def _parse_page(html: str) -> List[Event]:
+    soup = BeautifulSoup(html, "html.parser")
+    events: List[Event] = []
 
-# DNA Lounge has a well-structured events calendar.
-# URL: https://www.dnalounge.com/
-# Calendar page lists events in structured HTML: <div class="event"> blocks
-# Each block has: date header, event title <a href="/calendar/.../">, start time
-# Requires: requests + BeautifulSoup (no JS rendering needed)
+    for box in soup.select(".blurbox"):
+        text = box.get_text(" ", strip=True)
 
-import logging
-from typing import List
+        if not text:
+            continue
 
-from app.event_model import Event
+        name = text.split(" - ")[0]
 
-logger = logging.getLogger(__name__)
+        events.append(Event(
+            name=name,
+            start_time=datetime.now(TZ),
+            end_time=None,
+            location="DNA Lounge",
+            description=text,
+            source_url="https://www.dnalounge.com/",
+            source=SOURCE,
+            unique_key=Event.build_unique_key(name, datetime.now(TZ)),
+        ))
 
-SOURCE = "dnalounge"
-URL = "https://www.dnalounge.com/"
-
-
-def fetch_events() -> List[Event]:
-    logger.warning(f"[{SOURCE}] scraper not yet implemented — returning empty")
-    return []
+    return events

@@ -1,22 +1,39 @@
-from __future__ import annotations
+import json
+import re
 
-# The Regency Ballroom uses Stellar/DoTheBay platform.
-# URL: https://www.theregencyballroom.com/shows/
-# Shows listed as structured HTML cards, each with: title, date string, ticket link
-# Date format typically: "Friday, May 9, 2025 · 8:00 PM"
-# Requires: requests + BeautifulSoup (no JS rendering needed)
-
-import logging
-from typing import List
-
-from app.event_model import Event
-
-logger = logging.getLogger(__name__)
-
-SOURCE = "regency_ballroom"
-URL = "https://www.theregencyballroom.com/shows/"
+def _extract_json(html: str):
+    match = re.search(r"window\.__INITIAL_STATE__\s*=\s*(\{.*?\});", html)
+    if not match:
+        return None
+    try:
+        return json.loads(match.group(1))
+    except Exception:
+        return None
 
 
-def fetch_events() -> List[Event]:
-    logger.warning(f"[{SOURCE}] scraper not yet implemented — returning empty")
-    return []
+def _parse_page(html: str) -> List[Event]:
+    data = _extract_json(html)
+    if not data:
+        return []
+
+    events = []
+    for e in data.get("events", []):
+        name = e.get("title")
+        url = e.get("url")
+        start = None
+
+        if e.get("startDate"):
+            start = datetime.fromisoformat(e["startDate"]).astimezone(TZ)
+
+        events.append(Event(
+            name=name,
+            start_time=start,
+            end_time=None,
+            location="Regency Ballroom",
+            description=None,
+            source_url=url,
+            source=SOURCE,
+            unique_key=Event.build_unique_key(name, start),
+        ))
+
+    return events

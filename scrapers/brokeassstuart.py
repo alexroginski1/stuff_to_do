@@ -1,22 +1,39 @@
-from __future__ import annotations
+def _extract_events(html: str):
+    import json, re
 
-# Broke Ass Stuart events are on DoTheBay (Stellar platform).
-# URL: https://brokeassstuart.dothebay.com/
-# Events load via XHR: GET https://brokeassstuart.dothebay.com/api/events?page=1
-# Response is JSON with {"data": [{"id", "name", "starts_at", "ends_at", "venue": {...}, "url"}]}
-# Requires: requests (JSON API — no JS rendering needed)
-
-import logging
-from typing import List
-
-from app.event_model import Event
-
-logger = logging.getLogger(__name__)
-
-SOURCE = "brokeassstuart"
-URL = "https://brokeassstuart.dothebay.com/"
+    matches = re.findall(r'window\.__DATA__\s*=\s*(\{.*?\});', html)
+    for m in matches:
+        try:
+            return json.loads(m)
+        except Exception:
+            continue
+    return None
 
 
-def fetch_events() -> List[Event]:
-    logger.warning(f"[{SOURCE}] scraper not yet implemented — returning empty")
-    return []
+def _parse_page(html: str) -> List[Event]:
+    data = _extract_events(html)
+    if not data:
+        return []
+
+    events: List[Event] = []
+
+    for e in data.get("events", []):
+        name = e.get("title")
+        url = e.get("url")
+
+        start = None
+        if e.get("start_time"):
+            start = datetime.fromisoformat(e["start_time"]).astimezone(TZ)
+
+        events.append(Event(
+            name=name,
+            start_time=start,
+            end_time=None,
+            location=e.get("venue_name"),
+            description=e.get("description"),
+            source_url=url,
+            source=SOURCE,
+            unique_key=Event.build_unique_key(name, start),
+        ))
+
+    return events

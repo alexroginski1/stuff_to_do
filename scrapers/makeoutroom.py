@@ -1,22 +1,26 @@
-from __future__ import annotations
+def _parse_page(html: str) -> List[Event]:
+    soup = BeautifulSoup(html, "html.parser")
+    events: List[Event] = []
 
-# The Makeout Room uses a static HTML site (or WordPress).
-# URL: http://www.makeoutroom.com/
-# Events listed as <li> or <div> entries with date strings and show names.
-# Parse the event list from the homepage; follow each event link for full details.
-# Requires: requests + BeautifulSoup (no JS rendering needed)
+    desc = soup.find("meta", property="og:description")
+    if not desc:
+        return []
 
-import logging
-from typing import List
+    text = desc.get("content", "")
+    if not text:
+        return []
 
-from app.event_model import Event
+    name = text.split("~")[0].strip()
 
-logger = logging.getLogger(__name__)
+    events.append(Event(
+        name=name,
+        start_time=datetime.now(TZ),
+        end_time=None,
+        location="Make-Out Room",
+        description=text,
+        source_url="http://www.makeoutroom.com/",
+        source=SOURCE,
+        unique_key=Event.build_unique_key(name, datetime.now(TZ)),
+    ))
 
-SOURCE = "makeoutroom"
-URL = "http://www.makeoutroom.com/"
-
-
-def fetch_events() -> List[Event]:
-    logger.warning(f"[{SOURCE}] scraper not yet implemented — returning empty")
-    return []
+    return events
