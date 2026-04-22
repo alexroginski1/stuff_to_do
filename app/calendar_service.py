@@ -13,7 +13,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from app.event_model import Event
-from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SCRAPER_LABELS, SOURCE_EMOJIS, TOKEN_FILE
+from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SCRAPER_LABELS, SOURCE_DISPLAY_URLS, SOURCE_EMOJIS, TOKEN_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -138,13 +138,28 @@ _FOOTER = (
 )
 
 
+def _price_lines(description: str) -> list[str]:
+    return [line for line in description.splitlines() if "$" in line]
+
+
 def _build_body(event: Event) -> dict:
     end = event.end_time or (event.start_time + timedelta(hours=1))
     label = SCRAPER_LABELS.get(event.source, event.source)
-    parts = [f'<a href="{event.source_url}">{label}</a>']
+    source_display_url = SOURCE_DISPLAY_URLS.get(event.source, event.source_url)
+
+    parts = [f'<a href="{source_display_url}">{label}</a>']
+
+    if event.source_url and event.source_url != source_display_url:
+        parts.append(f'<a href="{event.source_url}">Event Link 1</a>')
+
     if event.description:
+        prices = _price_lines(event.description)
+        if prices:
+            parts.append("")
+            parts.extend(prices)
         parts.append("")
         parts.append(event.description)
+
     description = "\n".join(parts) + _FOOTER
     emoji = SOURCE_EMOJIS.get(event.source, "")
     summary = f"{emoji} {event.name}" if emoji else event.name

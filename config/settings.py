@@ -27,6 +27,24 @@ SOURCE_EMOJIS: dict[str, str] = {
     "mannys": "👨‍🦰",
 }
 
+# Friendly display URLs for the event source page (keyed by each scraper's SOURCE constant).
+# Used as the hyperlink target for the source name in calendar event descriptions.
+SOURCE_DISPLAY_URLS: dict[str, str] = {
+    "luma": "https://luma.com/sf",
+    "tiat": "https://luma.com/tiat",
+    "luma_tiat": "https://luma.com/tiat",
+    "partiful": "https://partiful.com/explore/sf",
+    "funcheap": "https://sf.funcheap.com/region/san-francisco/",
+    "the_faight": "https://www.thefaight.com/events",
+    "decentered": "https://decentered.org/events",
+    "dnalounge": "https://www.dnalounge.com/calendar/latest.html",
+    "makeoutroom": "http://www.makeoutroom.com/",
+    "gamh": "https://gamh.com/calendar/",
+    "roxie": "https://roxie.com/calendar/",
+    "Manny's | Eventbrite": "https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512",
+    "mannys": "https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512",
+}
+
 # Human-readable display names for each scraper module
 SCRAPER_LABELS: dict[str, str] = {
     "luma": "Luma",
@@ -53,6 +71,6 @@ CALENDARS: dict[str, list[str]] = {
     "SF Arts/Culture": ["decentered","the_faight","luma_tiat"],
     # "SF Music": ["great_american_music_hall"],
     # "SF Movies": ["roxie_theater"],
-    # "Other": ["mannys"]
+    # "SF Other": ["mannys"]
 }
 
