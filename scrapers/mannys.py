@@ -14,7 +14,7 @@ from app.event_model import Event
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "eventbrite"
+SOURCE = "Manny's | Eventbrite"
 _ORGANIZER_ID = "15114280512"
 _BASE_URL = f"https://www.eventbriteapi.com/v3/organizers/{_ORGANIZER_ID}/events/"
 _TZ = ZoneInfo("America/Los_Angeles")
@@ -44,20 +44,23 @@ def _parse_dt(s: Optional[str]) -> Optional[datetime]:
 def _fetch_page(page: int) -> dict:
     params = {
         "page": page,
-        "page_size": _PAGE_SIZE,
-        "expand": "venue",
-        "order_by": "start_asc",
-        # IMPORTANT: do NOT include "status" (causes 400)
+
     }
 
-    resp = requests.get(_BASE_URL, headers=_HEADERS, params=params, timeout=10)
+    resp = requests.get(
+        _BASE_URL,
+        headers=_HEADERS,
+        params=params,
+        timeout=10
+    )
 
     if not resp.ok:
         logger.error(f"[{SOURCE}] error response: {resp.text}")
+        resp.raise_for_status()
 
-    resp.raise_for_status()
+        print(resp.status_code, resp.text)
+
     return resp.json()
-
 
 def _parse_page(data: dict) -> List[Event]:
     events: List[Event] = []
