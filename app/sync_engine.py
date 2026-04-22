@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 from app.calendar_service import (
     build_service,
+    delete_event,
     fetch_existing_events,
     get_credentials,
     get_or_create_calendar,
@@ -57,14 +58,23 @@ def _sync_calendar(
     calendar_name: str,
     events: List[Event],
     history: push_history.History,
+    delete_events: bool = False,
 ) -> dict:
     existing = fetch_existing_events(service, calendar_id)
-    stats = {"inserted": 0, "updated": 0, "skipped": 0, "errors": 0}
+    stats = {"inserted": 0, "updated": 0, "skipped": 0, "deleted": 0, "errors": 0}
 
     for event in events:
         key = event.unique_key
         try:
-            if key in existing:
+            if delete_events:
+                if key in existing:
+                    delete_event(service, calendar_id, existing[key]["event_id"])
+                    push_history.remove(history, calendar_name, key)
+                    stats["deleted"] += 1
+                    time.sleep(_API_DELAY)
+                else:
+                    stats["skipped"] += 1
+            elif key in existing:
                 if existing[key]["content_hash"] != event.content_hash():
                     update_event(service, calendar_id, existing[key]["event_id"], event)
                     stats["updated"] += 1
@@ -86,7 +96,7 @@ def _sync_calendar(
     return stats
 
 
-def run_sync() -> None:
+def run_sync(num_events_per_source: int | None = None, delete_events: bool = False) -> None:
     creds = get_credentials()
     service = build_service(creds)
 
@@ -98,7 +108,10 @@ def run_sync() -> None:
 
         raw_events: List[Event] = []
         for name in scraper_names:
-            raw_events.extend(_fetch_safe(name))
+            fetched = _fetch_safe(name)
+            if num_events_per_source is not None:
+                fetched = fetched[:num_events_per_source]
+            raw_events.extend(fetched)
 
         deduped: dict[str, Event] = {}
         for e in raw_events:
@@ -107,11 +120,15 @@ def run_sync() -> None:
         events = _filter_events(list(deduped.values()))
         logger.info(f"[{calendar_name}] {len(events)} events after date filtering")
 
-        stats = _sync_calendar(service, calendar_id, calendar_name, events, history)
-        logger.info(
-            f"[{calendar_name}] inserted={stats['inserted']} "
-            f"updated={stats['updated']} skipped={stats['skipped']} "
-            f"errors={stats['errors']}"
-        )
+        stats = _sync_calendar(service, calendar_id, calendar_name, events, history, delete_events=delete_events)
+        log_parts = [
+            f"inserted={stats['inserted']}",
+            f"updated={stats['updated']}",
+            f"skipped={stats['skipped']}",
+            f"errors={stats['errors']}",
+        ]
+        if stats.get("deleted"):
+            log_parts.append(f"deleted={stats['deleted']}")
+        logger.info(f"[{calendar_name}] " + " ".join(log_parts))
 
     push_history.save(history)

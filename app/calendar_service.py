@@ -13,7 +13,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from app.event_model import Event
-from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SCRAPER_LABELS, TOKEN_FILE
+from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SCRAPER_LABELS, SOURCE_EMOJIS, TOKEN_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -132,16 +132,24 @@ def _gcal_datetime(dt: datetime) -> dict:
     return {"dateTime": dt.isoformat(), "timeZone": iana_name}
 
 
+_FOOTER = (
+    "\n――――――――――\n"
+    '<a href="https://docs.google.com/spreadsheets/d/1x1EeFDPKNDULmW1_EE-4xsTcPV0RQ7pdZd4oK_fh0Dg/edit?gid=545113219#gid=545113219">SF Stuff To Do</a>'
+)
+
+
 def _build_body(event: Event) -> dict:
     end = event.end_time or (event.start_time + timedelta(hours=1))
     label = SCRAPER_LABELS.get(event.source, event.source)
-    parts = [label, event.source_url]
+    parts = [f'<a href="{event.source_url}">{label}</a>']
     if event.description:
         parts.append("")
         parts.append(event.description)
-    description = "\n".join(parts)
+    description = "\n".join(parts) + _FOOTER
+    emoji = SOURCE_EMOJIS.get(event.source, "")
+    summary = f"{emoji} {event.name}" if emoji else event.name
     return {
-        "summary": event.name,
+        "summary": summary,
         "description": description.strip(),
         "location": event.location,
         "start": _gcal_datetime(event.start_time),
@@ -154,6 +162,11 @@ def _build_body(event: Event) -> dict:
             }
         },
     }
+
+
+def delete_event(service, calendar_id: str, event_id: str) -> None:
+    service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+    logger.debug(f"Deleted event {event_id}")
 
 
 def insert_event(service, calendar_id: str, event: Event) -> None:

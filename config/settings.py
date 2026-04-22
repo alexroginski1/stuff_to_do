@@ -12,6 +12,21 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 DEFAULT_TIMEZONE = "America/Los_Angeles"
 
+# Emoji prefix for each scraper module
+SOURCE_EMOJIS: dict[str, str] = {
+    "partiful": "🥳",
+    "luma": "💡",
+    "funcheap": "😜",
+    "makeout_room": "💋",
+    "dnalounge": "🧬",
+    "decentered": "😵‍💫",
+    "the_faight": "🔮",
+    "luma_tiat": "🤖",
+    "great_american_music_hall": "🇺🇸",
+    "roxie_theater": "🪨",
+    "mannys": "👨‍🦰",
+}
+
 # Human-readable display names for each scraper module
 SCRAPER_LABELS: dict[str, str] = {
     "luma": "Luma",
@@ -23,6 +38,9 @@ SCRAPER_LABELS: dict[str, str] = {
     "decentered": "Decentered Arts",
     "dnalounge": "DNA Lounge",
     "makeout_room": "Make-Out Room",
+    "roxie_theater": "Roxie Theater",
+    "luma_tiat": "TIAT: intersection of art and tech",
+    "mannys": "Manny's: Community, Politics, and Culture"
 }
 
 # Maps Google Calendar name → list of scraper module names (under scrapers/)
@@ -32,9 +50,9 @@ CALENDARS: dict[str, list[str]] = {
     # "SF Fun Cheap": ["funcheap"],
     # "SF Bars": ["makeout_room"],
     # "SF Nightclubs": ["dnalounge"],
-    # "SF Arts/Culture": ["decentered","the_faight","luma_tiat"],
+    "SF Arts/Culture": ["decentered","the_faight","luma_tiat"],
     # "SF Music": ["great_american_music_hall"],
     # "SF Movies": ["roxie_theater"],
-    "Other": ["mannys"]
+    # "Other": ["mannys"]
 }
 

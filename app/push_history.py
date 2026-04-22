@@ -60,3 +60,7 @@ def was_pushed(history: History, calendar_name: str, unique_key: str) -> bool:
 
 def record(history: History, calendar_name: str, unique_key: str) -> None:
     history.setdefault(calendar_name, {})[unique_key] = datetime.now(tz=timezone.utc).isoformat()
+
+
+def remove(history: History, calendar_name: str, unique_key: str) -> None:
+    history.get(calendar_name, {}).pop(unique_key, None)
