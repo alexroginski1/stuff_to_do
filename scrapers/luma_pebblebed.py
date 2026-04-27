@@ -1,15 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List
 
-from pathlib import Path
-
 from app.event_model import Event
-from scrapers.luma import fetch_page_events
+from scrapers.luma import fetch_luma_events
 
 _SOURCE = Path(__file__).stem
-URL = "https://luma.com/pebblebedevents"
+_URL = "https://api2.luma.com/calendar/get-items?calendar_api_id=cal-mdEwCbO9zZBtrtm&pagination_limit=20&period=future"
 
 
 def fetch_events() -> List[Event]:
-    return fetch_page_events(URL, _SOURCE)
+    return fetch_luma_events(_URL, _SOURCE)
