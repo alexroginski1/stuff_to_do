@@ -1,4 +1,4 @@
-rom __future__ import annotations
+from __future__ import annotations
 
 import logging
 from datetime import datetime
@@ -36,6 +36,9 @@ def _parse_events(payload: dict) -> List[Event]:
         if not event_id or event_id in seen_ids:
             continue
         seen_ids.add(event_id)
+
+        if e.get("publicAccess") == "Private":
+            continue
 
         name = e.get("title")
         start_dt = _parse_iso_dt(e.get("startTime"))

@@ -13,7 +13,7 @@ from app.event_model import Event
 
 logger = logging.getLogger(__name__)
 
-__SOURCE = Path(__file__).stem
+_SOURCE = Path(__file__).stem
 _URL = "https://events.decentered.org/v1/events"
 _TZ = ZoneInfo("America/Los_Angeles")
 

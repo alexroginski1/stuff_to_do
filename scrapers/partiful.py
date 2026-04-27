@@ -14,7 +14,7 @@ from config.settings import DEFAULT_TIMEZONE
 
 logger = logging.getLogger(__name__)
 
-__SOURCE = Path(__file__).stem
+_SOURCE = Path(__file__).stem
 URL = "https://partiful.com/explore/sf"
 
 

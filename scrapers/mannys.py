@@ -16,7 +16,7 @@ from app.event_model import Event
 
 logger = logging.getLogger(__name__)
 
-__SOURCE = Path(__file__).stem
+_SOURCE = Path(__file__).stem
 _ORGANIZER_ID = "15114280512"
 _BASE_URL = f"https://www.eventbriteapi.com/v3/organizers/{_ORGANIZER_ID}/events/"
 _TZ = ZoneInfo("America/Los_Angeles")

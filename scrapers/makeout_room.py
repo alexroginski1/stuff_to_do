@@ -15,7 +15,7 @@ from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
-__SOURCE = Path(__file__).stem
+_SOURCE = Path(__file__).stem
 _BASE_URL = "http://www.makeoutroom.com/"
 _TZ = ZoneInfo("America/Los_Angeles")
 

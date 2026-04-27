@@ -21,7 +21,7 @@ from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
-__SOURCE = Path(__file__).stem
+_SOURCE = Path(__file__).stem
 _BASE_URL = "https://sf.funcheap.com/region/san-francisco/"
 _TZ = ZoneInfo("America/Los_Angeles")
 _MAX_PAGES = 8

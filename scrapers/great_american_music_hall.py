@@ -14,7 +14,7 @@ from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
-__SOURCE = Path(__file__).stem
+_SOURCE = Path(__file__).stem
 BASE_URL = "https://gamh.com/calendar/"
 TZ = ZoneInfo("America/Los_Angeles")
 

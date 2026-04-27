@@ -14,7 +14,7 @@ from app.utils import fetch_html, parse_iso_datetime
 
 logger = logging.getLogger(__name__)
 
-__SOURCE = Path(__file__).stem
+_SOURCE = Path(__file__).stem
 URL = "https://www.thefaight.com/events"
 LOCATION = "475 Haight St, San Francisco"
 
