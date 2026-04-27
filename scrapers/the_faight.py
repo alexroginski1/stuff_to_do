@@ -71,7 +71,7 @@ def fetch_events() -> List[Event]:
         end_time = parse_iso_datetime(end_raw) if end_raw else None
 
         slug = (raw.get("slug") or {}).get("current", "")
-        source_url = f"https://www.thefaight.com/events/{slug}" if slug else URL
+        source_url = f"https://www.thefaight.com/events/{slug}" if slug else ""
 
         cta = raw.get("ctaUrl")
         if cta:

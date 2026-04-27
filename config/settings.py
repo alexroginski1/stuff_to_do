@@ -13,84 +13,90 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 DEFAULT_TIMEZONE = "America/Los_Angeles"
 
 SOURCES: dict[str, dict] = {
-    "the_faight": {
-        "label": "The Faight",
-        "emoji": "🔮",
-        "display_url": "https://www.thefaight.com/events",
-        "calendar": "SF Arts/Culture",
-    },
-    "luma_tiat": {
-        "label": "TIAT Art and Tech",
-        "emoji": "🤖",
-        "display_url": "https://luma.com/tiat",
-        "calendar": "SF Arts/Culture",
-    },
-    "decentered_featured_events": {
-        "label": "Decentered Featured Events",
-        "emoji": "😵‍💫",
-        "display_url": "https://decentered.org/events",
-        "calendar": "SF Arts/Culture",
-    },
-    "makeout_room": {
-        "label": "Make-Out Room",
-        "emoji": "💋",
-        "display_url": "http://www.makeoutroom.com/",
-        "calendar": "SF Bars",
-    },
-    "funcheap": {
-        "label": "SF Funcheap",
-        "emoji": "😜",
-        "display_url": "https://sf.funcheap.com/region/san-francisco/",
-        "calendar": "SF Fun Cheap",
-    },
-    "luma": {
-        "label": "Luma",
-        "emoji": "💡",
-        "display_url": "https://luma.com/sf",
-        "calendar": "SF Luma",
-    },
-    "roxie_theater": {
-        "label": "Roxie Theater",
-        "emoji": "🪨",
-        "display_url": "https://roxie.com/calendar/",
-        "calendar": "SF Movies",
-    },
-    "great_american_music_hall": {
-        "label": "Great American Music Hall",
-        "emoji": "🇺🇸",
-        "display_url": "https://gamh.com/calendar/",
-        "calendar": "SF Music",
-    },
-    "dnalounge": {
-        "label": "DNA Lounge",
-        "emoji": "🧬",
-        "display_url": "https://www.dnalounge.com/calendar/latest.html",
-        "calendar": "SF Nightclubs",
-    },
-    "decentered_community_events": {
-        "label": "Decentered Community Events",
-        "emoji": "👥",
-        "display_url": "https://decentered.org/events",
+    # "the_faight": {
+    #     "label": "The Faight",
+    #     "emoji": "🔮",
+    #     "display_url": "https://www.thefaight.com/events",
+    #     "calendar": "SF Arts/Culture",
+    # },
+    # "luma_tiat": {
+    #     "label": "TIAT Art and Tech",
+    #     "emoji": "🤖",
+    #     "display_url": "https://luma.com/tiat",
+    #     "calendar": "SF Arts/Culture",
+    # },
+    # "decentered_featured_events": {
+    #     "label": "Decentered Featured Events",
+    #     "emoji": "😵‍💫",
+    #     "display_url": "https://decentered.org/events",
+    #     "calendar": "SF Arts/Culture",
+    # },
+    # "makeout_room": {
+    #     "label": "Make-Out Room",
+    #     "emoji": "💋",
+    #     "display_url": "http://www.makeoutroom.com/",
+    #     "calendar": "SF Bars",
+    # },
+    # "funcheap": {
+    #     "label": "SF Funcheap",
+    #     "emoji": "😜",
+    #     "display_url": "https://sf.funcheap.com/region/san-francisco/",
+    #     "calendar": "SF Fun Cheap",
+    # },
+    # "luma": {
+    #     "label": "Luma",
+    #     "emoji": "💡",
+    #     "display_url": "https://luma.com/sf",
+    #     "calendar": "SF Luma",
+    # },
+    # "roxie_theater": {
+    #     "label": "Roxie Theater",
+    #     "emoji": "🪨",
+    #     "display_url": "https://roxie.com/calendar/",
+    #     "calendar": "SF Movies",
+    # },
+    # "great_american_music_hall": {
+    #     "label": "Great American Music Hall",
+    #     "emoji": "🇺🇸",
+    #     "display_url": "https://gamh.com/calendar/",
+    #     "calendar": "SF Music",
+    # },
+    # "dnalounge": {
+    #     "label": "DNA Lounge",
+    #     "emoji": "🧬",
+    #     "display_url": "https://www.dnalounge.com/calendar/latest.html",
+    #     "calendar": "SF Nightclubs",
+    # },
+    # "decentered_community_events": {
+    #     "label": "Decentered Community Events",
+    #     "emoji": "👥",
+    #     "display_url": "https://decentered.org/events",
+    #     "calendar": "SF Other",
+    # },
+    # "mannys": {
+    #     "label": "Manny's: Community, Politics, and Culture",
+    #     "emoji": "👨‍🦰",
+    #     "display_url": "https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512",
+    #     "calendar": "SF Other",
+    # },
+    "the_sf_nook": {
+        "label": "The SF Nook: SF Event Space",
+        "emoji": "🏠",
+        "display_url": "https://www.thesfnook.com/events",
         "calendar": "SF Other",
     },
-    "mannys": {
-        "label": "Manny's: Community, Politics, and Culture",
-        "emoji": "👨‍🦰",
-        "display_url": "https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512",
-        "calendar": "SF Other",
-    },
-    "partiful": {
-        "label": "Partiful",
-        "emoji": "🥳",
-        "display_url": "https://partiful.com/explore/sf",
-        "calendar": "SF Partiful",
-    },
-    "luma_pebblebed": {
-        "label": "Pebblebed Tech Events on Luma",
-        "emoji": "🪨",
-        "display_url": "https://luma.com/pebblebedevents",
-        "calendar": "SF Tech",
-    },
+    # "partiful": {
+    #     "label": "Partiful",
+    #     "emoji": "🥳",
+    #     "display_url": "https://partiful.com/explore/sf",
+    #     "calendar": "SF Partiful",
+    # },
+    # "luma_pebblebed": {
+    #     "label": "Pebblebed Tech Events on Luma",
+    #     "emoji": "🪨",
+    #     "display_url": "https://luma.com/pebblebedevents",
+    #     "calendar": "SF Tech",
+    # },
 }
 
 # Maps Google Calendar name → list of scraper module names (under scrapers/)

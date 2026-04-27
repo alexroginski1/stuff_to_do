@@ -151,7 +151,9 @@ def _build_body(event: Event) -> dict:
     parts = [f'<a href="{source_display_url}">{label}</a>']
 
     if event.source_url and event.source_url != source_display_url:
-        parts.append(f'<a href="{event.source_url}">Event Link 1</a>')
+        parts.append(f'<a href="{event.source_url}">Event Link</a>')
+    else:
+        parts.append("No event link provided")
 
     if event.description:
         prices = _price_lines(event.description)
