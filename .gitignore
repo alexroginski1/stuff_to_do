@@ -21,3 +21,6 @@ build/
 # IDE
 .vscode/
 .idea/
+
+
+push_history.json

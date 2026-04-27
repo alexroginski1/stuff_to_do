@@ -13,7 +13,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from app.event_model import Event
-from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SCRAPER_LABELS, SOURCE_DISPLAY_URLS, SOURCE_EMOJIS, TOKEN_FILE
+from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SOURCES, TOKEN_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -144,8 +144,9 @@ def _price_lines(description: str) -> list[str]:
 
 def _build_body(event: Event) -> dict:
     end = event.end_time or (event.start_time + timedelta(hours=1))
-    label = SCRAPER_LABELS.get(event.source, event.source)
-    source_display_url = SOURCE_DISPLAY_URLS.get(event.source, event.source_url)
+    src_meta = SOURCES.get(event.source, {})
+    label = src_meta.get("label", event.source)
+    source_display_url = src_meta.get("display_url", event.source_url)
 
     parts = [f'<a href="{source_display_url}">{label}</a>']
 
@@ -161,7 +162,7 @@ def _build_body(event: Event) -> dict:
         parts.append(event.description)
 
     description = "\n".join(parts) + _FOOTER
-    emoji = SOURCE_EMOJIS.get(event.source, "")
+    emoji = src_meta.get("emoji", "")
     summary = f"{emoji} {event.name}" if emoji else event.name
     return {
         "summary": summary,
