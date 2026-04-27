@@ -8,12 +8,14 @@ from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
 
+from pathlib import Path
+
 from app.event_model import Event
 from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "dnalounge"
+__SOURCE = Path(__file__).stem
 _BASE_URL = "https://www.dnalounge.com/calendar/latest.html"
 _TZ = ZoneInfo("America/Los_Angeles")
 
@@ -90,7 +92,7 @@ def _parse_page(html: str) -> List[Event]:
             location=_LOCATION,
             description=description,
             source_url=url if url.startswith("http") else f"https://www.dnalounge.com{url}",
-            source=SOURCE,
+            source=_SOURCE,
             unique_key=Event.build_unique_key(name, start),
         ))
 
@@ -101,9 +103,9 @@ def fetch_events() -> List[Event]:
     try:
         html = fetch_html(_BASE_URL)
     except Exception as exc:
-        logger.warning(f"[{SOURCE}] failed to fetch: {exc}")
+        logger.warning(f"[{_SOURCE}] failed to fetch: {exc}")
         return []
 
     events = _parse_page(html)
-    logger.info(f"[{SOURCE}] fetched {len(events)} events")
+    logger.info(f"[{_SOURCE}] fetched {len(events)} events")
     return events

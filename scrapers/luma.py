@@ -8,12 +8,14 @@ from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
 
+from pathlib import Path
+
 from app.event_model import Event
 from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "luma"
+__SOURCE = Path(__file__).stem
 _BASE_URL = "https://luma.com/sf"
 _TZ = ZoneInfo("America/Los_Angeles")
 
@@ -108,7 +110,7 @@ def _parse_events(data: dict) -> List[Event]:
             location=location,
             description=None,
             source_url=url,
-            source=SOURCE,
+            source=_SOURCE,
             unique_key=Event.build_unique_key(name, start),
         ))
 
@@ -119,14 +121,14 @@ def fetch_events() -> List[Event]:
     try:
         html = fetch_html(_BASE_URL)
     except Exception as exc:
-        logger.warning(f"[{SOURCE}] fetch failed: {exc}")
+        logger.warning(f"[{_SOURCE}] fetch failed: {exc}")
         return []
 
     try:
         data = _extract_json(html)
         events = _parse_events(data)
-        logger.info(f"[{SOURCE}] parsed {len(events)} events")
+        logger.info(f"[{_SOURCE}] parsed {len(events)} events")
         return events
     except Exception as exc:
-        logger.exception(f"[{SOURCE}] parse failed: {exc}")
+        logger.exception(f"[{_SOURCE}] parse failed: {exc}")
         return []

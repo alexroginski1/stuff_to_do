@@ -6,13 +6,15 @@ from typing import List
 
 from bs4 import BeautifulSoup
 
+from pathlib import Path
+
 from app.event_model import Event
 from app.utils import fetch_html, parse_iso_datetime
 from config.settings import DEFAULT_TIMEZONE
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "partiful"
+__SOURCE = Path(__file__).stem
 URL = "https://partiful.com/explore/sf"
 
 
@@ -58,7 +60,7 @@ def _to_event(raw: dict) -> Event:
         location=raw.get("location"),
         description=raw.get("description"),
         source_url=raw["url"],
-        source=SOURCE,
+        source=_SOURCE,
         unique_key=Event.build_unique_key(name, start),
     )
 

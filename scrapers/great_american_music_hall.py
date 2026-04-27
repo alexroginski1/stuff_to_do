@@ -7,12 +7,14 @@ from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
 
+from pathlib import Path
+
 from app.event_model import Event
 from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "gamh"
+__SOURCE = Path(__file__).stem
 BASE_URL = "https://gamh.com/calendar/"
 TZ = ZoneInfo("America/Los_Angeles")
 
@@ -67,7 +69,7 @@ def _parse_page(html: str) -> List[Event]:
             location="Great American Music Hall",
             description=description,
             source_url=url,
-            source=SOURCE,
+            source=_SOURCE,
             unique_key=Event.build_unique_key(name, start),
         ))
 

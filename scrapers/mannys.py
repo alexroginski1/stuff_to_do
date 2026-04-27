@@ -10,11 +10,13 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from pathlib import Path
+
 from app.event_model import Event
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "Manny's | Eventbrite"
+__SOURCE = Path(__file__).stem
 _ORGANIZER_ID = "15114280512"
 _BASE_URL = f"https://www.eventbriteapi.com/v3/organizers/{_ORGANIZER_ID}/events/"
 _TZ = ZoneInfo("America/Los_Angeles")
@@ -55,7 +57,7 @@ def _fetch_page(page: int) -> dict:
     )
 
     if not resp.ok:
-        logger.error(f"[{SOURCE}] error response: {resp.text}")
+        logger.error(f"[{_SOURCE}] error response: {resp.text}")
         resp.raise_for_status()
 
         print(resp.status_code, resp.text)
@@ -99,7 +101,7 @@ def _parse_page(data: dict) -> List[Event]:
             location=location,
             description=description,
             source_url=url,
-            source=SOURCE,
+            source=_SOURCE,
             unique_key=Event.build_unique_key(name, start),
         ))
 
@@ -113,17 +115,17 @@ def fetch_events() -> List[Event]:
         try:
             data = _fetch_page(page)
         except Exception as exc:
-            logger.warning(f"[{SOURCE}] failed to fetch page {page}: {exc}")
+            logger.warning(f"[{_SOURCE}] failed to fetch page {page}: {exc}")
             break
 
         page_events = _parse_page(data)
 
         if not page_events:
-            logger.info(f"[{SOURCE}] no events on page {page}, stopping")
+            logger.info(f"[{_SOURCE}] no events on page {page}, stopping")
             break
 
         all_events.extend(page_events)
-        logger.info(f"[{SOURCE}] page {page}: {len(page_events)} events")
+        logger.info(f"[{_SOURCE}] page {page}: {len(page_events)} events")
 
         if not data.get("pagination", {}).get("has_more_items"):
             break

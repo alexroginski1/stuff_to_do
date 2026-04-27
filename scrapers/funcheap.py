@@ -14,12 +14,14 @@ from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
 
+from pathlib import Path
+
 from app.event_model import Event
 from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "funcheap"
+__SOURCE = Path(__file__).stem
 _BASE_URL = "https://sf.funcheap.com/region/san-francisco/"
 _TZ = ZoneInfo("America/Los_Angeles")
 _MAX_PAGES = 8
@@ -77,7 +79,7 @@ def _parse_page(html: str) -> List[Event]:
             location=location,
             description=None,
             source_url=url,
-            source=SOURCE,
+            source=_SOURCE,
             unique_key=Event.build_unique_key(name, start),
         ))
 
@@ -91,13 +93,13 @@ def fetch_events() -> List[Event]:
         try:
             html = fetch_html(url)
         except Exception as exc:
-            logger.warning(f"[{SOURCE}] failed to fetch page {page}: {exc}")
+            logger.warning(f"[{_SOURCE}] failed to fetch page {page}: {exc}")
             break
         page_events = _parse_page(html)
         if not page_events:
-            logger.info(f"[{SOURCE}] no events on page {page}, stopping")
+            logger.info(f"[{_SOURCE}] no events on page {page}, stopping")
             break
         all_events.extend(page_events)
-        logger.info(f"[{SOURCE}] page {page}: {len(page_events)} events")
+        logger.info(f"[{_SOURCE}] page {page}: {len(page_events)} events")
 
     return all_events

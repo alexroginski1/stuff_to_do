@@ -7,11 +7,13 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from pathlib import Path
+
 from app.event_model import Event
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "decentered"
+__SOURCE = Path(__file__).stem
 _URL = "https://events.decentered.org/v1/events"
 _TZ = ZoneInfo("America/Los_Angeles")
 
@@ -76,7 +78,7 @@ def _parse_events(payload: dict) -> List[Event]:
                 location=location,
                 description=e.get("description"),
                 source_url=e.get("link") or _URL,
-                source=SOURCE,
+                source=_SOURCE,
                 unique_key=Event.build_unique_key(name, start_dt),
             )
         )
@@ -90,9 +92,9 @@ def fetch_events() -> List[Event]:
         resp.raise_for_status()
         payload = resp.json()
     except Exception as exc:
-        logger.warning(f"[{SOURCE}] failed to fetch events: {exc}")
+        logger.warning(f"[{_SOURCE}] failed to fetch events: {exc}")
         return []
 
     events = _parse_events(payload)
-    logger.info(f"[{SOURCE}] parsed {len(events)} events")
+    logger.info(f"[{_SOURCE}] parsed {len(events)} events")
     return events

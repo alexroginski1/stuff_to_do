@@ -7,12 +7,14 @@ from typing import List
 
 from bs4 import BeautifulSoup
 
+from pathlib import Path
+
 from app.event_model import Event
 from app.utils import fetch_html, parse_iso_datetime
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "the_faight"
+__SOURCE = Path(__file__).stem
 URL = "https://www.thefaight.com/events"
 LOCATION = "475 Haight St, San Francisco"
 
@@ -62,7 +64,7 @@ def fetch_events() -> List[Event]:
         try:
             start_time = parse_iso_datetime(start_raw)
         except Exception:
-            logger.warning(f"[{SOURCE}] bad startTime {start_raw!r} for {name!r}")
+            logger.warning(f"[{_SOURCE}] bad startTime {start_raw!r} for {name!r}")
             continue
 
         end_raw = raw.get("endTime")
@@ -82,9 +84,9 @@ def fetch_events() -> List[Event]:
             location=LOCATION,
             description=None,
             source_url=source_url,
-            source=SOURCE,
+            source=_SOURCE,
             unique_key=Event.build_unique_key(name, start_time),
         ))
 
-    logger.info(f"[{SOURCE}] fetched {len(events)} events")
+    logger.info(f"[{_SOURCE}] fetched {len(events)} events")
     return events

@@ -7,12 +7,14 @@ from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
 
+from pathlib import Path
+
 from app.event_model import Event
 from app.utils import fetch_html
 
 logger = logging.getLogger(__name__)
 
-SOURCE = "roxie"
+__SOURCE = Path(__file__).stem
 _BASE_URL = "https://roxie.com/calendar/"
 _TZ = ZoneInfo("America/Los_Angeles")
 
@@ -80,7 +82,7 @@ def _parse_page(html: str) -> List[Event]:
                     location="Roxie Theater",
                     description=None,
                     source_url=url,
-                    source=SOURCE,
+                    source=_SOURCE,
                     unique_key=Event.build_unique_key(name, start),
                 ))
 
@@ -91,10 +93,10 @@ def fetch_events() -> List[Event]:
     try:
         html = fetch_html(_BASE_URL)
     except Exception as exc:
-        logger.error(f"[{SOURCE}] failed to fetch calendar: {exc}")
+        logger.error(f"[{_SOURCE}] failed to fetch calendar: {exc}")
         return []
 
     events = _parse_page(html)
-    logger.info(f"[{SOURCE}] fetched {len(events)} events")
+    logger.info(f"[{_SOURCE}] fetched {len(events)} events")
 
     return events
