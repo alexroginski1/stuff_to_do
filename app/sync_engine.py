@@ -9,13 +9,15 @@ from zoneinfo import ZoneInfo
 
 from app.calendar_service import (
     build_service,
-    delete_event,
+    delete_all_events,
+    delete_all_parser_events,
     fetch_existing_events,
     get_credentials,
     get_or_create_calendar,
     insert_event,
     update_event,
 )
+
 from app.event_model import Event
 import app.push_history as push_history
 from config.settings import CALENDARS
@@ -58,7 +60,6 @@ def _sync_calendar(
     calendar_name: str,
     events: List[Event],
     history: push_history.History,
-    delete_events: bool = False,
 ) -> dict:
     existing = fetch_existing_events(service, calendar_id)
     stats = {"inserted": 0, "updated": 0, "skipped": 0, "deleted": 0, "errors": 0}
@@ -66,15 +67,7 @@ def _sync_calendar(
     for event in events:
         key = event.unique_key
         try:
-            if delete_events:
-                if key in existing:
-                    delete_event(service, calendar_id, existing[key]["event_id"])
-                    push_history.remove(history, calendar_name, key)
-                    stats["deleted"] += 1
-                    time.sleep(_API_DELAY)
-                else:
-                    stats["skipped"] += 1
-            elif key in existing:
+            if key in existing:
                 if existing[key]["content_hash"] != event.content_hash():
                     update_event(service, calendar_id, existing[key]["event_id"], event)
                     stats["updated"] += 1
@@ -96,7 +89,12 @@ def _sync_calendar(
     return stats
 
 
-def run_sync(num_events_per_source: int | None = None, delete_events: bool = False) -> None:
+def run_sync(
+    num_events_per_source: int | None = None,
+    delete_parser_events: bool = False,
+    delete_all_events_flag: bool = False,
+    source: str | None = None,
+) -> None:
     creds = get_credentials()
     service = build_service(creds)
 
@@ -105,6 +103,16 @@ def run_sync(num_events_per_source: int | None = None, delete_events: bool = Fal
     for calendar_name, scraper_names in CALENDARS.items():
         logger.info(f"=== Calendar: {calendar_name} ===")
         calendar_id = get_or_create_calendar(service, calendar_name)
+
+        if delete_all_events_flag:
+            deleted = delete_all_events(service, calendar_id, source=source)
+            logger.info(f"[{calendar_name}] deleted all events={deleted}")
+            continue
+
+        if delete_parser_events:
+            deleted = delete_all_parser_events(service, calendar_id, source=source)
+            logger.info(f"[{calendar_name}] deleted parser events={deleted}")
+            continue
 
         raw_events: List[Event] = []
         for name in scraper_names:
@@ -120,15 +128,13 @@ def run_sync(num_events_per_source: int | None = None, delete_events: bool = Fal
         events = _filter_events(list(deduped.values()))
         logger.info(f"[{calendar_name}] {len(events)} events after date filtering")
 
-        stats = _sync_calendar(service, calendar_id, calendar_name, events, history, delete_events=delete_events)
+        stats = _sync_calendar(service, calendar_id, calendar_name, events, history)
         log_parts = [
             f"inserted={stats['inserted']}",
             f"updated={stats['updated']}",
             f"skipped={stats['skipped']}",
             f"errors={stats['errors']}",
         ]
-        if stats.get("deleted"):
-            log_parts.append(f"deleted={stats['deleted']}")
         logger.info(f"[{calendar_name}] " + " ".join(log_parts))
 
     push_history.save(history)

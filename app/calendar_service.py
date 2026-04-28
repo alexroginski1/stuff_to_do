@@ -177,6 +177,8 @@ def _build_body(event: Event) -> dict:
                 _KEY_FIELD: event.unique_key,
                 _HASH_FIELD: event.content_hash(),
                 _SOURCE_FIELD: event.source,
+                "created_by": "event_parser",
+                "parser_version": "v1",
             }
         },
     }
@@ -185,6 +187,58 @@ def _build_body(event: Event) -> dict:
 def delete_event(service, calendar_id: str, event_id: str) -> None:
     service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
     logger.debug(f"Deleted event {event_id}")
+
+
+def delete_all_parser_events(service, calendar_id: str, source: str | None = None) -> int:
+    """Delete parser-created events from today onwards. Optionally filter by source. Returns count deleted."""
+    deleted = 0
+    page_token = None
+    time_min = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    props = ["created_by=event_parser"]
+    if source:
+        props.append(f"{_SOURCE_FIELD}={source}")
+    while True:
+        resp = service.events().list(
+            calendarId=calendar_id,
+            privateExtendedProperty=props,
+            singleEvents=True,
+            timeMin=time_min,
+            maxResults=2500,
+            pageToken=page_token,
+        ).execute()
+        for event in resp.get("items", []):
+            service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
+            logger.debug(f"Deleted event {event['id']} ('{event.get('summary', '')}')")
+            deleted += 1
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    return deleted
+
+
+def delete_all_events(service, calendar_id: str, source: str | None = None) -> int:
+    """Delete all events (including manual) from today onwards. Optionally filter by source. Returns count deleted."""
+    deleted = 0
+    page_token = None
+    time_min = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    list_kwargs: dict = dict(
+        calendarId=calendar_id,
+        singleEvents=True,
+        timeMin=time_min,
+        maxResults=2500,
+    )
+    if source:
+        list_kwargs["privateExtendedProperty"] = f"{_SOURCE_FIELD}={source}"
+    while True:
+        resp = service.events().list(pageToken=page_token, **list_kwargs).execute()
+        for event in resp.get("items", []):
+            service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
+            logger.debug(f"Deleted event {event['id']} ('{event.get('summary', '')}')")
+            deleted += 1
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    return deleted
 
 
 def insert_event(service, calendar_id: str, event: Event) -> None:
