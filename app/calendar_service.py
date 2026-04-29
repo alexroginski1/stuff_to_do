@@ -13,6 +13,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from app.event_model import Event
+from app.utils import fetch_eventbrite_price
 from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SOURCES, TOKEN_FILE
 
 logger = logging.getLogger(__name__)
@@ -148,12 +149,20 @@ def _build_body(event: Event) -> dict:
     label = src_meta.get("label", event.source)
     source_display_url = src_meta.get("display_url", event.source_url)
 
+    # Fetch price for Eventbrite events
+    eventbrite_price: str | None = None
+    if event.source_url and "eventbrite.com" in event.source_url:
+        eventbrite_price = fetch_eventbrite_price(event.source_url)
+
     parts = [f'<a href="{source_display_url}">{label}</a>']
 
     if event.source_url and event.source_url != source_display_url:
         parts.append(f'<a href="{event.source_url}">Event Link</a>')
     else:
         parts.append("No event link provided")
+
+    if eventbrite_price:
+        parts.append(f"<b>Price: {eventbrite_price}</b>")
 
     if event.description:
         prices = _price_lines(event.description)
@@ -165,7 +174,8 @@ def _build_body(event: Event) -> dict:
 
     description = "\n".join(parts) + _FOOTER
     emoji = src_meta.get("emoji", "")
-    summary = f"{emoji} {event.name}" if emoji else event.name
+    name_with_price = f"{event.name} ({eventbrite_price})" if eventbrite_price else event.name
+    summary = f"{emoji} {name_with_price}" if emoji else name_with_price
     return {
         "summary": summary,
         "description": description.strip(),
