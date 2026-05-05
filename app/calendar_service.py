@@ -43,8 +43,13 @@ def _get_local_credentials() -> Credentials:
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                logger.warning(f"Token refresh failed ({e}), re-authenticating...")
+                os.remove(TOKEN_FILE)
+                creds = None
+        if not creds or not creds.valid:
             flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
             creds = flow.run_local_server(port=8080)
         with open(TOKEN_FILE, "w") as f:
