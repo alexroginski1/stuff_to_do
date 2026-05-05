@@ -204,9 +204,9 @@ def delete_event(service, calendar_id: str, event_id: str) -> None:
     logger.debug(f"Deleted event {event_id}")
 
 
-def delete_all_parser_events(service, calendar_id: str, source: str | None = None) -> int:
-    """Delete parser-created events from today onwards. Optionally filter by source. Returns count deleted."""
-    deleted = 0
+def delete_all_parser_events(service, calendar_id: str, source: str | None = None) -> list[str]:
+    """Delete parser-created events from today onwards. Optionally filter by source. Returns unique_keys of deleted events."""
+    deleted_keys: list[str] = []
     page_token = None
     time_min = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     props = ["created_by=event_parser"]
@@ -224,11 +224,13 @@ def delete_all_parser_events(service, calendar_id: str, source: str | None = Non
         for event in resp.get("items", []):
             service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
             logger.debug(f"Deleted event {event['id']} ('{event.get('summary', '')}')")
-            deleted += 1
+            key = event.get("extendedProperties", {}).get("private", {}).get(_KEY_FIELD)
+            if key:
+                deleted_keys.append(key)
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
-    return deleted
+    return deleted_keys
 
 
 def delete_all_events(service, calendar_id: str, source: str | None = None) -> int:

@@ -120,8 +120,10 @@ def run_sync(
             continue
 
         if delete_parser_events:
-            deleted = delete_all_parser_events(service, calendar_id, source=source)
-            logger.info(f"[{calendar_name}] deleted parser events={deleted}")
+            deleted_keys = delete_all_parser_events(service, calendar_id, source=source)
+            for key in deleted_keys:
+                push_history.remove(history, calendar_name, key)
+            logger.info(f"[{calendar_name}] deleted parser events={len(deleted_keys)}")
             continue
 
         raw_events: List[Event] = []
