@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
@@ -19,7 +19,7 @@ _BASE_URL = "https://offbeatsf.com/events/list/"
 _TZ = ZoneInfo("America/Los_Angeles")
 
 _MIN_PAGE = 1
-_MAX_PAGE = 20
+_MAX_PAGE = 2
 
 
 # ------------------------
@@ -34,79 +34,50 @@ def _page_url(page: int) -> str:
 # ------------------------
 # DATETIME
 # ------------------------
-def _parse_dt(s: Optional[str]) -> Optional[datetime]:
-    if not s:
-        return None
+def _parse_datetime(date_str: str, time_str: str) -> Optional[datetime]:
+    """
+    Combines:
+    date_str = "2026-05-05"
+    time_str = "8:00 pm"
+    """
     try:
-        return datetime.fromisoformat(s)
+        dt_str = f"{date_str} {time_str}"
+        return datetime.strptime(dt_str, "%Y-%m-%d %I:%M %p").replace(tzinfo=_TZ)
     except Exception:
         return None
 
 
 # ------------------------
-# PRICE PARSING
+# PRICE
 # ------------------------
-def _extract_price_str(text: str) -> Optional[str]:
+def _parse_price(text: str) -> Optional[int]:
     if not text:
         return None
 
-    patterns = [
-        r"\bFree\b",
-        r"\bDonation\b",
-        r"\$\d+(?:\.\d{2})?(?:\s*-\s*\$\d+(?:\.\d{2})?)?",
-    ]
+    text = text.lower()
 
-    for p in patterns:
-        match = re.search(p, text, re.IGNORECASE)
-        if match:
-            return match.group(0)
-
-    return None
-
-
-def _parse_price_value(price_str: str) -> Optional[int]:
-    """
-    Convert price string → rounded integer dollars
-
-    Examples:
-    "Free" -> 0
-    "$10" -> 10
-    "$10.50" -> 11
-    "$10-$20" -> 15
-    """
-    if not price_str:
-        return None
-
-    price_str = price_str.lower()
-
-    if "free" in price_str:
+    if "free" in text:
         return 0
 
-    # Extract all numeric values
-    nums = re.findall(r"\d+(?:\.\d+)?", price_str)
+    nums = re.findall(r"\d+(?:\.\d+)?", text)
     if not nums:
         return None
 
     values = [float(n) for n in nums]
 
-    # If range → average
     if len(values) > 1:
-        avg = sum(values) / len(values)
-        return round(avg)
+        return round(sum(values) / len(values))
 
     return round(values[0])
 
 
 def _format_price(price: int) -> str:
-    if price == 0:
-        return "Free"
-    return f"${price}"
+    return "Free" if price == 0 else f"${price}"
 
 
 # ------------------------
 # PARSER
 # ------------------------
-
 def _parse_page(html: str) -> List[Event]:
     soup = BeautifulSoup(html, "html.parser")
     events: List[Event] = []
@@ -114,36 +85,79 @@ def _parse_page(html: str) -> List[Event]:
     rows = soup.select("article.tribe-events-calendar-list__event")
 
     for row in rows:
-        # --- TITLE + URL ---
-        anchor = row.select_one('a[href*="/event/"]')
+        # ------------------------
+        # TITLE + URL
+        # ------------------------
+        anchor = row.select_one("a.tribe-events-calendar-list__event-title-link")
         if not anchor:
             continue
 
         name = anchor.get_text(strip=True)
         url = anchor.get("href")
 
-        # --- TIME ---
-        time_tag = row.find("time")
-        start = _parse_dt(time_tag.get("datetime")) if time_tag else None
+        # ------------------------
+        # TIME
+        # ------------------------
+        time_tag = row.select_one("time.tribe-events-calendar-list__event-datetime")
 
-        # --- DESCRIPTION ---
-        description = row.get_text(" ", strip=True)
+        start = None
+        end = None
 
-        # --- PRICE (fallback scan) ---
-        price_str = _extract_price_str(description)
-        price_value = _parse_price_value(price_str) if price_str else None
+        if time_tag:
+            date_str = time_tag.get("datetime")  # "2026-05-05"
 
+            start_span = time_tag.select_one(".tribe-event-date-start")
+            end_span = time_tag.select_one(".tribe-event-time")
+
+            if date_str and start_span:
+                start = _parse_datetime(date_str, start_span.get_text(strip=True).split("@")[-1].strip())
+
+            if date_str and end_span:
+                end = _parse_datetime(date_str, end_span.get_text(strip=True))
+
+        # ------------------------
+        # LOCATION
+        # ------------------------
+        venue_tag = row.select_one(".tribe-events-calendar-list__event-venue")
+        location = venue_tag.get_text(strip=True) if venue_tag else None
+
+        # ------------------------
+        # DESCRIPTION (NO DUPLICATION)
+        # ------------------------
+        desc_tag = row.select_one("div.tribe-events-calendar-list__event-description")
+        description = desc_tag.get_text(" ", strip=True) if desc_tag else None
+
+        # ------------------------
+        # PRICE (CORRECT ELEMENT)
+        # ------------------------
+        price_tag = row.select_one("span.tribe-events-c-small-cta__price")
+        price_value = None
+
+        if price_tag:
+            price_value = _parse_price(price_tag.get_text(strip=True))
+
+        # ------------------------
+        # MUTATE TITLE + DESCRIPTION
+        # ------------------------
         if price_value is not None:
             price_clean = _format_price(price_value)
-            name = f"{name} ({price_clean})"
-            description = f"Price: {price_clean}. {description}"
 
+            name = f"{name} ({price_clean})"
+
+            # if description:
+            #     description = f"Price: {price_clean}. {description}"
+            # else:
+            #     description = f"Price: {price_clean}"
+
+        # ------------------------
+        # BUILD EVENT
+        # ------------------------
         events.append(
             Event(
                 name=name,
                 start_time=start,
-                end_time=None,
-                location=None,
+                end_time=end,
+                location=location,
                 description=description,
                 source_url=url,
                 source=_SOURCE,
