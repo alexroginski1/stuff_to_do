@@ -1,0 +1,182 @@
+{
+  "displayName": "Stuff To Do – Event Sync",
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {
+        "xPos": 0,
+        "yPos": 0,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Events Inserted per Day by Source",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/events_sync_result\" metric.labels.action=\"inserted\"",
+                    "aggregation": {
+                      "alignmentPeriod": "86400s",
+                      "perSeriesAligner": "ALIGN_SUM",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.source"]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "legendTemplate": "${metric.labels.source}"
+              }
+            ],
+            "yAxis": { "label": "Events", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 0,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Events Skipped per Day by Source",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/events_sync_result\" metric.labels.action=\"skipped\"",
+                    "aggregation": {
+                      "alignmentPeriod": "86400s",
+                      "perSeriesAligner": "ALIGN_SUM",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.source"]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "legendTemplate": "${metric.labels.source}"
+              }
+            ],
+            "yAxis": { "label": "Events", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 4,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Events Inserted per Day by Calendar",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/events_sync_result\" metric.labels.action=\"inserted\"",
+                    "aggregation": {
+                      "alignmentPeriod": "86400s",
+                      "perSeriesAligner": "ALIGN_SUM",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.calendar"]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "legendTemplate": "${metric.labels.calendar}"
+              }
+            ],
+            "yAxis": { "label": "Events", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 4,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Scraper Fetch Counts per Day by Source",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/events_fetched\"",
+                    "aggregation": {
+                      "alignmentPeriod": "86400s",
+                      "perSeriesAligner": "ALIGN_SUM",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.source"]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "legendTemplate": "${metric.labels.source}"
+              }
+            ],
+            "yAxis": { "label": "Events Fetched", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 8,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Events Updated per Day by Source",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/events_sync_result\" metric.labels.action=\"updated\"",
+                    "aggregation": {
+                      "alignmentPeriod": "86400s",
+                      "perSeriesAligner": "ALIGN_SUM",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.source"]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "legendTemplate": "${metric.labels.source}"
+              }
+            ],
+            "yAxis": { "label": "Events", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 8,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Sync Errors per Day by Source",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/events_sync_result\" metric.labels.action=\"errors\"",
+                    "aggregation": {
+                      "alignmentPeriod": "86400s",
+                      "perSeriesAligner": "ALIGN_SUM",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.source"]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "legendTemplate": "${metric.labels.source}"
+              }
+            ],
+            "yAxis": { "label": "Errors", "scale": "LINEAR" }
+          }
+        }
+      }
+    ]
+  }
+}

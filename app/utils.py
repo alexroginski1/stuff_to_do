@@ -192,3 +192,10 @@ def setup_logging() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+
+
+def emit_metric(event_type: str, **fields) -> None:
+    """Print a structured JSON entry to stdout for Cloud Logging metric extraction."""
+    import sys
+    payload = {"event_type": event_type, **fields}
+    print(json.dumps(payload), file=sys.stdout, flush=True)

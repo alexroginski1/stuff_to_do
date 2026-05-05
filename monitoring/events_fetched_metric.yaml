@@ -1,0 +1,20 @@
+name: events_fetched
+description: >
+  Number of events fetched from each source scraper during each sync run,
+  before date filtering or deduplication. Labeled by source and calendar.
+filter: 'jsonPayload.event_type="scraper_fetch"'
+metricDescriptor:
+  metricKind: GAUGE
+  valueType: INT64
+  unit: "1"
+  labels:
+    - key: source
+      valueType: STRING
+      description: Scraper module name (e.g. luma_tiat, partiful)
+    - key: calendar
+      valueType: STRING
+      description: Target Google Calendar name (e.g. SF Tech, SF Arts/Culture)
+labelExtractors:
+  source: EXTRACT(jsonPayload.source)
+  calendar: EXTRACT(jsonPayload.calendar)
+valueExtractor: EXTRACT(jsonPayload.count)

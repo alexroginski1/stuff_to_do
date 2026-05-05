@@ -20,6 +20,7 @@ from app.calendar_service import (
 
 from app.event_model import Event
 import app.push_history as push_history
+from app.utils import emit_metric
 from config.settings import CALENDARS
 
 logger = logging.getLogger(__name__)
@@ -60,33 +61,42 @@ def _sync_calendar(
     calendar_name: str,
     events: List[Event],
     history: push_history.History,
-) -> dict:
+) -> tuple[dict, dict]:
     existing = fetch_existing_events(service, calendar_id)
     stats = {"inserted": 0, "updated": 0, "skipped": 0, "deleted": 0, "errors": 0}
+    per_source: dict[str, dict] = {}
 
     for event in events:
+        src = event.source
+        if src not in per_source:
+            per_source[src] = {"inserted": 0, "updated": 0, "skipped": 0, "errors": 0}
         key = event.unique_key
         try:
             if key in existing:
                 if existing[key]["content_hash"] != event.content_hash():
                     update_event(service, calendar_id, existing[key]["event_id"], event)
                     stats["updated"] += 1
+                    per_source[src]["updated"] += 1
                     time.sleep(_API_DELAY)
                 else:
                     stats["skipped"] += 1
+                    per_source[src]["skipped"] += 1
             elif push_history.was_pushed(history, calendar_name, key):
                 # Previously pushed but user deleted it — don't re-create
                 stats["skipped"] += 1
+                per_source[src]["skipped"] += 1
             else:
                 insert_event(service, calendar_id, event)
                 push_history.record(history, calendar_name, key)
                 stats["inserted"] += 1
+                per_source[src]["inserted"] += 1
                 time.sleep(_API_DELAY)
         except Exception as exc:
             logger.error(f"Sync failed for '{event.name}': {exc}")
             stats["errors"] += 1
+            per_source[src]["errors"] += 1
 
-    return stats
+    return stats, per_source
 
 
 def run_sync(
@@ -117,6 +127,7 @@ def run_sync(
         raw_events: List[Event] = []
         for name in scraper_names:
             fetched = _fetch_safe(name)
+            emit_metric("scraper_fetch", source=name, calendar=calendar_name, count=len(fetched))
             if num_events_per_source is not None:
                 fetched = fetched[:num_events_per_source]
             raw_events.extend(fetched)
@@ -128,7 +139,7 @@ def run_sync(
         events = _filter_events(list(deduped.values()))
         logger.info(f"[{calendar_name}] {len(events)} events after date filtering")
 
-        stats = _sync_calendar(service, calendar_id, calendar_name, events, history)
+        stats, per_source = _sync_calendar(service, calendar_id, calendar_name, events, history)
         log_parts = [
             f"inserted={stats['inserted']}",
             f"updated={stats['updated']}",
@@ -136,5 +147,9 @@ def run_sync(
             f"errors={stats['errors']}",
         ]
         logger.info(f"[{calendar_name}] " + " ".join(log_parts))
+
+        for src, src_stats in per_source.items():
+            for action in ("inserted", "updated", "skipped", "errors"):
+                emit_metric("sync_result", source=src, calendar=calendar_name, action=action, count=src_stats[action])
 
     push_history.save(history)

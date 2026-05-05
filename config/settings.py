@@ -39,28 +39,28 @@ SOURCES: dict[str, dict] = {
         "emoji": "💋",
         "display_url": "http://www.makeoutroom.com/",
         "calendar": "SF Bars",
-        "enabled": False,
+        "enabled": True,
     },
     "funcheap": {
         "label": "SF Funcheap",
         "emoji": "😜",
         "display_url": "https://sf.funcheap.com/region/san-francisco/",
         "calendar": "SF Fun Cheap",
-        "enabled": False,
+        "enabled": True,
     },
     "luma": {
         "label": "Luma",
         "emoji": "💡",
         "display_url": "https://luma.com/sf",
         "calendar": "SF Luma",
-        "enabled": False,
+        "enabled": True,
     },
     "roxie_theater": {
         "label": "Roxie Theater",
         "emoji": "🪨",
         "display_url": "https://roxie.com/calendar/",
         "calendar": "SF Movies",
-        "enabled": False,
+        "enabled": True,
     },
     "great_american_music_hall": {
         "label": "Great American Music Hall",
@@ -109,6 +109,14 @@ SOURCES: dict[str, dict] = {
         "emoji": "🪨",
         "display_url": "https://luma.com/pebblebedevents",
         "calendar": "SF Tech",
+        "enabled": True,
+    },
+
+    "sketchboard_co": {
+        "label": "Sketchboard Co Art Events",
+        "emoji": "✏️",
+        "display_url": "https://www.sketchboard.co/",
+        "calendar": "SF Arts/Culture",
         "enabled": True,
     },
 }
