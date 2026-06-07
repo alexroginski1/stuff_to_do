@@ -4,8 +4,8 @@ import os
 
 _BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-CLIENT_SECRETS_FILE = os.path.join(_BASE, "client_secret.json")
-TOKEN_FILE = os.path.join(_BASE, "token.json")
+CLIENT_SECRETS_FILE = os.path.join(_BASE, "tokens", "client_secret.json")
+TOKEN_FILE = os.path.join(_BASE, "tokens", "token.json")
 PUSH_HISTORY_FILE = os.path.join(_BASE, "push_history.json")
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
