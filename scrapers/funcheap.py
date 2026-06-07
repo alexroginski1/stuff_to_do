@@ -8,7 +8,7 @@ from __future__ import annotations
 # Pagination: /page/N/ suffix; page 1 of ~25
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 
@@ -52,6 +52,8 @@ def _parse_page(html: str) -> List[Event]:
         if start is None:
             continue
         end = _parse_dt(end_raw)
+        if end is not None and end < start:
+            end += timedelta(days=1)
 
         # Location is the last bare span (no class attribute) in the meta div
         location: Optional[str] = None

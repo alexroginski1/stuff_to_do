@@ -19,7 +19,7 @@ _BASE_URL = "https://offbeatsf.com/events/list/"
 _TZ = ZoneInfo("America/Los_Angeles")
 
 _MIN_PAGE = 1
-_MAX_PAGE = 2
+_MAX_PAGE = 15
 
 
 # ------------------------
@@ -35,11 +35,6 @@ def _page_url(page: int) -> str:
 # DATETIME
 # ------------------------
 def _parse_datetime(date_str: str, time_str: str) -> Optional[datetime]:
-    """
-    Combines:
-    date_str = "2026-05-05"
-    time_str = "8:00 pm"
-    """
     try:
         dt_str = f"{date_str} {time_str}"
         return datetime.strptime(dt_str, "%Y-%m-%d %I:%M %p").replace(tzinfo=_TZ)
@@ -76,8 +71,42 @@ def _format_price(price: int) -> str:
 
 
 # ------------------------
+# DESCRIPTION CLEANING
+# ------------------------
+def _clean_description(desc_tag) -> Optional[str]:
+    if not desc_tag:
+        return None
+
+    seen = set()
+    parts = []
+
+    # collect unique text blocks
+    for el in desc_tag.find_all(["p", "span", "div"], recursive=True):
+        txt = el.get_text(" ", strip=True)
+        if txt and txt not in seen:
+            seen.add(txt)
+            parts.append(txt)
+
+    if not parts:
+        # fallback
+        text = desc_tag.get_text(" ", strip=True)
+        text = re.sub(r"\s+", " ", text)
+
+        # remove duplicated halves
+        half = len(text) // 2
+        if text[:half] == text[half:]:
+            text = text[:half]
+
+        return text
+
+    return " ".join(parts)
+
+
+# ------------------------
 # PARSER
 # ------------------------
+from datetime import timedelta
+
 def _parse_page(html: str) -> List[Event]:
     soup = BeautifulSoup(html, "html.parser")
     events: List[Event] = []
@@ -96,7 +125,7 @@ def _parse_page(html: str) -> List[Event]:
         url = anchor.get("href")
 
         # ------------------------
-        # TIME
+        # TIME (FIXED)
         # ------------------------
         time_tag = row.select_one("time.tribe-events-calendar-list__event-datetime")
 
@@ -104,35 +133,80 @@ def _parse_page(html: str) -> List[Event]:
         end = None
 
         if time_tag:
-            date_str = time_tag.get("datetime")  # "2026-05-05"
+            date_str = time_tag.get("datetime")
 
             start_span = time_tag.select_one(".tribe-event-date-start")
             end_span = time_tag.select_one(".tribe-event-time")
 
+            # --- START ---
             if date_str and start_span:
-                start = _parse_datetime(date_str, start_span.get_text(strip=True).split("@")[-1].strip())
+                start_text = start_span.get_text(strip=True)
 
+                if "@" in start_text:
+                    start_text = start_text.split("@")[-1].strip()
+
+                start = _parse_datetime(date_str, start_text)
+
+            # --- END ---
             if date_str and end_span:
-                end = _parse_datetime(date_str, end_span.get_text(strip=True))
+                end_text = end_span.get_text(strip=True)
+                end = _parse_datetime(date_str, end_text)
+
+            # 🔑 HANDLE OVERNIGHT EVENTS
+            if start and end and end <= start:
+                end = end + timedelta(days=1)
 
         # ------------------------
-        # LOCATION
+        # SAFETY GUARDS (CRITICAL)
         # ------------------------
-        venue_tag = row.select_one(".tribe-events-calendar-list__event-venue")
-        location = venue_tag.get_text(strip=True) if venue_tag else None
+        if not start:
+            continue  # skip invalid events
+
+        if end and end <= start:
+            end = None  # prevent Google Calendar error
+
+        # Optional: default duration if missing end
+        if start and not end:
+            end = start + timedelta(hours=2)
 
         # ------------------------
-        # DESCRIPTION (NO DUPLICATION)
+        # LOCATION (FIXED)
+        # ------------------------
+        address_tag = row.select_one("address.tribe-events-calendar-list__event-venue")
+
+        location = None
+
+        if address_tag:
+            venue_name = address_tag.select_one(
+                ".tribe-events-calendar-list__event-venue-title"
+            )
+            venue_addr = address_tag.select_one(
+                ".tribe-events-calendar-list__event-venue-address"
+            )
+
+            parts = []
+
+            if venue_name:
+                parts.append(venue_name.get_text(strip=True))
+
+            if venue_addr:
+                parts.append(venue_addr.get_text(strip=True))
+
+            if parts:
+                location = ", ".join(parts)
+
+        # ------------------------
+        # DESCRIPTION (DEDUPED)
         # ------------------------
         desc_tag = row.select_one("div.tribe-events-calendar-list__event-description")
-        description = desc_tag.get_text(" ", strip=True) if desc_tag else None
+        description = _clean_description(desc_tag)
 
         # ------------------------
-        # PRICE (CORRECT ELEMENT)
+        # PRICE
         # ------------------------
         price_tag = row.select_one("span.tribe-events-c-small-cta__price")
-        price_value = None
 
+        price_value = None
         if price_tag:
             price_value = _parse_price(price_tag.get_text(strip=True))
 
@@ -166,7 +240,6 @@ def _parse_page(html: str) -> List[Event]:
         )
 
     return events
-
 
 # ------------------------
 # FETCH
