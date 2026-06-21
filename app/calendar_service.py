@@ -159,7 +159,15 @@ def _build_body(event: Event) -> dict:
     if event.source_url and "eventbrite.com" in event.source_url:
         eventbrite_price = fetch_eventbrite_price(event.source_url)
 
-    parts = [f'<a href="{source_display_url}">{label}</a>']
+    location = src_meta.get("location")
+    location_link = src_meta.get("location_link")
+    if location and location_link:
+        location_str = f' (<a href="{location_link}">{location}</a>)'
+    elif location:
+        location_str = f" ({location})"
+    else:
+        location_str = ""
+    parts = [f'<a href="{source_display_url}">{label}</a>{location_str}']
 
     if event.source_url and event.source_url != source_display_url:
         parts.append(f'<a href="{event.source_url}">Event Link</a>')
