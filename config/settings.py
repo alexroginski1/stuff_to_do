@@ -51,7 +51,7 @@ SOURCES: dict[str, dict] = {
         "location_link": "https://maps.app.goo.gl/vzyNdBP39hJtJ2XC9",
         "emoji": "👥",
         "display_url": "https://decentered.org/events",
-        "calendar": "SF Other",
+        "calendar": "SF Community",
         "enabled": True,
     },
     "mannys": {
@@ -60,7 +60,7 @@ SOURCES: dict[str, dict] = {
         "location_link": "https://maps.app.goo.gl/wyEqhBaKK8M7sU1Q9",
         "emoji": "👨‍🦰",
         "display_url": "https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512",
-        "calendar": "SF Other",
+        "calendar": "SF Community",
         "enabled": True,
     },
     "the_sf_nook": {
@@ -69,7 +69,7 @@ SOURCES: dict[str, dict] = {
         "location_link": "https://maps.app.goo.gl/MbiV4DbkXNUp12QLA",
         "emoji": "🏠",
         "display_url": "https://www.thesfnook.com/events",
-        "calendar": "SF Other",
+        "calendar": "SF Community",
         "enabled": True,
     },
     "luma_the_commons": {
@@ -78,7 +78,7 @@ SOURCES: dict[str, dict] = {
         "location_link": "https://maps.app.goo.gl/URPfH9ePaBTm3YRd9",
         "emoji": "🏛️",
         "display_url": "https://luma.com/thecommons",
-        "calendar": "SF Other",
+        "calendar": "SF Community",
         "enabled": True,
     },
     "luma_tiat": {
