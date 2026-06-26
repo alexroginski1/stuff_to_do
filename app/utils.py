@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from datetime import datetime
 from typing import List, Optional
@@ -52,7 +53,7 @@ def fetch_html(url: str, headers: Optional[dict] = None, timeout: int = 20) -> s
 # Eventbrite API helpers
 # ---------------------------------------------------------------------------
 
-_EVENTBRITE_API_TOKEN = "***REDACTED***"
+_EVENTBRITE_API_TOKEN = os.environ.get("EVENTBRITE_API_TOKEN", "")
 _EVENTBRITE_HEADERS = {"Authorization": f"Bearer {_EVENTBRITE_API_TOKEN}"}
 _EVENTBRITE_TZ = ZoneInfo("America/Los_Angeles")
 _EVENTBRITE_API_BASE = "https://www.eventbriteapi.com/v3"
