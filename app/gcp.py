@@ -9,8 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 def is_cloud() -> bool:
-    """True when GCS_BUCKET is set, indicating a GCP cloud environment."""
-    return bool(os.environ.get("GCS_BUCKET"))
+    """True when running in Cloud Run (Job or Service), detected via GCP-injected env vars."""
+    return bool(
+        os.environ.get("CLOUD_RUN_JOB")
+        or os.environ.get("K_SERVICE")
+        or os.environ.get("GCS_BUCKET")
+    )
 
 
 def _project() -> str:
