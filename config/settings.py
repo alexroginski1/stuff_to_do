@@ -18,7 +18,7 @@ SOURCES: dict[str, dict] = {
         "location": "Lower Haight",
         "location_link": "https://maps.app.goo.gl/sD1asWWUYL11KqmEA",
         "emoji": "🔮",
-        "display_url": "https://www.thefaight.com/events",
+        "display_url": "https://www.eventbrite.com/o/75467307963",
         "calendar": "SF Arts/Culture",
         "enabled": True,
     },
