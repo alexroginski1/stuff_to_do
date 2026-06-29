@@ -15,7 +15,12 @@ from config.settings import DEFAULT_TIMEZONE
 logger = logging.getLogger(__name__)
 
 _SOURCE = Path(__file__).stem
-URL = "https://partiful.com/explore/sf"
+_URLS = [
+    "https://partiful.com/explore/sf",
+    "https://partiful.com/explore/sf?tag=music",
+    "https://partiful.com/explore/sf?tag=community",
+    "https://partiful.com/explore/sf?tag=arts",
+]
 
 
 def _extract_raw(raw: dict) -> dict:
@@ -65,32 +70,38 @@ def _to_event(raw: dict) -> Event:
     )
 
 
-def fetch_events() -> List[Event]:
-    html = fetch_html(URL)
+def _fetch_raws(url: str) -> List[dict]:
+    html = fetch_html(url)
     soup = BeautifulSoup(html, "html.parser")
     script = soup.find("script", {"id": "__NEXT_DATA__"})
-
     if not script:
-        raise RuntimeError("__NEXT_DATA__ not found on Partiful page")
+        raise RuntimeError(f"__NEXT_DATA__ not found on Partiful page: {url}")
+    return _parse_page(json.loads(script.string))
 
-    next_data = json.loads(script.string)
-    raws = _parse_page(next_data)
 
+def fetch_events() -> List[Event]:
     events: List[Event] = []
     seen_ids: set[str] = set()
 
-    for raw in raws:
-        event_id = raw.get("id")
-        if event_id in seen_ids:
-            continue
-        if event_id:
-            seen_ids.add(event_id)
-        if not raw.get("start"):
-            logger.warning(f"Skipping event with no start date: {raw.get('id')}")
-            continue
+    for url in _URLS:
         try:
-            events.append(_to_event(raw))
+            raws = _fetch_raws(url)
         except Exception as exc:
-            logger.warning(f"Skipping malformed event {raw.get('id')!r}: {exc}")
+            logger.warning(f"[{_SOURCE}] failed to fetch {url}: {exc}")
+            continue
+
+        for raw in raws:
+            event_id = raw.get("id")
+            if event_id in seen_ids:
+                continue
+            if event_id:
+                seen_ids.add(event_id)
+            if not raw.get("start"):
+                logger.warning(f"Skipping event with no start date: {raw.get('id')}")
+                continue
+            try:
+                events.append(_to_event(raw))
+            except Exception as exc:
+                logger.warning(f"Skipping malformed event {raw.get('id')!r}: {exc}")
 
     return events
