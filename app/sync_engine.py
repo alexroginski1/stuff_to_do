@@ -75,18 +75,22 @@ def _sync_calendar(
             if key in existing:
                 if existing[key]["content_hash"] != event.content_hash():
                     update_event(service, calendar_id, existing[key]["event_id"], event)
+                    print(f"[UPDATE] {event.name} ({event.start_time})")
                     stats["updated"] += 1
                     per_source[src]["updated"] += 1
                     time.sleep(_API_DELAY)
                 else:
+                    print(f"[SKIP] {event.name} ({event.start_time}) — no changes")
                     stats["skipped"] += 1
                     per_source[src]["skipped"] += 1
             elif push_history.was_pushed(history, calendar_name, key):
                 # Previously pushed but user deleted it — don't re-create
+                print(f"[SKIP] {event.name} ({event.start_time}) — previously deleted by user")
                 stats["skipped"] += 1
                 per_source[src]["skipped"] += 1
             else:
                 insert_event(service, calendar_id, event)
+                print(f"[APPEND] {event.name} ({event.start_time})")
                 push_history.record(history, calendar_name, key)
                 stats["inserted"] += 1
                 per_source[src]["inserted"] += 1
