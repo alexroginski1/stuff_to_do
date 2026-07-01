@@ -23,6 +23,13 @@ _URLS = [
 ]
 
 
+def _is_san_francisco(raw: dict) -> bool:
+    approximate_location = (
+        raw.get("locationInfo", {}).get("mapsInfo", {}).get("approximateLocation", "")
+    )
+    return approximate_location.strip().lower().startswith("san francisco")
+
+
 def _extract_raw(raw: dict) -> dict:
     return {
         "id": raw.get("id"),
@@ -43,13 +50,17 @@ def _parse_page(next_data: dict) -> List[dict]:
     raws: List[dict] = []
 
     for item in page.get("trendingSection", {}).get("items", []):
-        if item.get("type") == "event":
+        if item.get("type") == "event" and _is_san_francisco(item["event"]):
             raws.append(_extract_raw(item["event"]))
 
     for section in page.get("sections", []):
         for item in section.get("items", []):
-            if item.get("type") == "event":
+            if item.get("type") == "event" and _is_san_francisco(item["event"]):
                 raws.append(_extract_raw(item["event"]))
+
+    for item in page.get("feedItems", []):
+        if item.get("type") == "event" and _is_san_francisco(item["event"]):
+            raws.append(_extract_raw(item["event"]))
 
     return raws
 

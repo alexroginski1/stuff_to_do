@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 _API_DELAY = 0.1  # seconds between Google Calendar write calls
 _TZ = ZoneInfo("America/Los_Angeles")
-_LOOKAHEAD_DAYS = 92  # ~3 months
+_LOOKAHEAD_DAYS = 14  # 2 weeks
 
 
 def _filter_events(events: List[Event]) -> List[Event]:
@@ -75,7 +75,6 @@ def _sync_calendar(
             if key in existing:
                 if existing[key]["content_hash"] != event.content_hash():
                     update_event(service, calendar_id, existing[key]["event_id"], event)
-                    print(f"[UPDATE] {event.name} ({event.start_time})")
                     stats["updated"] += 1
                     per_source[src]["updated"] += 1
                     time.sleep(_API_DELAY)
@@ -90,7 +89,6 @@ def _sync_calendar(
                 per_source[src]["skipped"] += 1
             else:
                 insert_event(service, calendar_id, event)
-                print(f"[APPEND] {event.name} ({event.start_time})")
                 push_history.record(history, calendar_name, key)
                 stats["inserted"] += 1
                 per_source[src]["inserted"] += 1
@@ -124,9 +122,7 @@ def run_sync(
             continue
 
         if delete_parser_events:
-            deleted_keys = delete_all_parser_events(service, calendar_id, source=source)
-            for key in deleted_keys:
-                push_history.remove(history, calendar_name, key)
+            deleted_keys = delete_all_parser_events(service, calendar_id, calendar_name, history, source=source)
             logger.info(f"[{calendar_name}] deleted parser events={len(deleted_keys)}")
             continue
 

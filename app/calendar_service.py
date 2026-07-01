@@ -12,8 +12,9 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
+import app.push_history as push_history
 from app.event_model import Event
-from app.utils import fetch_eventbrite_price
+from app.utils import fetch_eventbrite_price, format_readable_dt
 from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SOURCES, TOKEN_FILE
 
 logger = logging.getLogger(__name__)
@@ -172,7 +173,7 @@ def _build_body(event: Event) -> dict:
     if event.source_url and event.source_url != source_display_url:
         parts.append(f'<a href="{event.source_url}">Event Link</a>')
     else:
-        parts.append("No event link provided")
+        parts.append("Event Link: no link provided. Visit venue calendar above ^")
 
     if eventbrite_price:
         parts.append(f"<b>Price: {eventbrite_price}</b>")
@@ -207,13 +208,38 @@ def _build_body(event: Event) -> dict:
     }
 
 
+def _gcal_event_display(event: dict) -> str:
+    """Return 'Name (readable datetime)' for a raw Google Calendar event resource."""
+    name = event.get("summary", "(no title)")
+    raw = event.get("start", {}).get("dateTime") or event.get("start", {}).get("date")
+    if raw:
+        try:
+            when = format_readable_dt(datetime.fromisoformat(raw))
+        except ValueError:
+            when = raw
+    else:
+        when = "unknown time"
+    return f"{name} ({when})"
+
+
 def delete_event(service, calendar_id: str, event_id: str) -> None:
+    event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
     service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
-    logger.debug(f"Deleted event {event_id}")
+    logger.info(f"[DELETE] {_gcal_event_display(event)}")
 
 
-def delete_all_parser_events(service, calendar_id: str, source: str | None = None) -> list[str]:
-    """Delete parser-created events from today onwards. Optionally filter by source. Returns unique_keys of deleted events."""
+def delete_all_parser_events(
+    service,
+    calendar_id: str,
+    calendar_name: str,
+    history: push_history.History,
+    source: str | None = None,
+) -> list[str]:
+    """Delete parser-created events from today onwards. Optionally filter by source.
+
+    Removes each deleted event's key from `history` (caller is responsible for
+    persisting it via push_history.save). Returns unique_keys of deleted events.
+    """
     deleted_keys: list[str] = []
     page_token = None
     time_min = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
@@ -231,10 +257,11 @@ def delete_all_parser_events(service, calendar_id: str, source: str | None = Non
         ).execute()
         for event in resp.get("items", []):
             service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
-            logger.debug(f"Deleted event {event['id']} ('{event.get('summary', '')}')")
+            logger.info(f"[DELETE] {_gcal_event_display(event)}")
             key = event.get("extendedProperties", {}).get("private", {}).get(_KEY_FIELD)
             if key:
                 deleted_keys.append(key)
+                push_history.remove(history, calendar_name, key)
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
@@ -258,7 +285,7 @@ def delete_all_events(service, calendar_id: str, source: str | None = None) -> i
         resp = service.events().list(pageToken=page_token, **list_kwargs).execute()
         for event in resp.get("items", []):
             service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
-            logger.debug(f"Deleted event {event['id']} ('{event.get('summary', '')}')")
+            logger.info(f"[DELETE] {_gcal_event_display(event)}")
             deleted += 1
         page_token = resp.get("nextPageToken")
         if not page_token:
@@ -268,11 +295,11 @@ def delete_all_events(service, calendar_id: str, source: str | None = None) -> i
 
 def insert_event(service, calendar_id: str, event: Event) -> None:
     service.events().insert(calendarId=calendar_id, body=_build_body(event)).execute()
-    logger.debug(f"Inserted '{event.name}'")
+    logger.info(f"[APPEND] {event.name} ({format_readable_dt(event.start_time)})")
 
 
 def update_event(service, calendar_id: str, event_id: str, event: Event) -> None:
     service.events().update(
         calendarId=calendar_id, eventId=event_id, body=_build_body(event)
     ).execute()
-    logger.debug(f"Updated '{event.name}'")
+    logger.info(f"[UPDATE] {event.name} ({format_readable_dt(event.start_time)})")

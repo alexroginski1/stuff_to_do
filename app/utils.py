@@ -53,16 +53,32 @@ def fetch_html(url: str, headers: Optional[dict] = None, timeout: int = 20) -> s
 # Eventbrite API helpers
 # ---------------------------------------------------------------------------
 
-_EVENTBRITE_API_TOKEN = os.environ.get("EVENTBRITE_API_TOKEN", "")
-_EVENTBRITE_HEADERS = {"Authorization": f"Bearer {_EVENTBRITE_API_TOKEN}"}
 _EVENTBRITE_TZ = ZoneInfo("America/Los_Angeles")
 _EVENTBRITE_API_BASE = "https://www.eventbriteapi.com/v3"
 
+_ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tokens", ".env")
+
+
+def _load_env_file() -> None:
+    try:
+        with open(_ENV_FILE) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, _, val = line.partition("=")
+                    os.environ.setdefault(key.strip(), val.strip())
+    except FileNotFoundError:
+        pass
+
+
+_load_env_file()
+
 
 def _eventbrite_get(path: str, params: Optional[dict] = None) -> dict:
+    token = os.environ.get("EVENTBRITE_API_TOKEN", "")
     resp = _session.get(
         f"{_EVENTBRITE_API_BASE}{path}",
-        headers=_EVENTBRITE_HEADERS,
+        headers={"Authorization": f"Bearer {token}"},
         params=params or {},
         timeout=10,
     )
@@ -185,6 +201,11 @@ def fetch_eventbrite_price(url: str) -> Optional[str]:
 def parse_iso_datetime(s: str):
     """Parse an ISO 8601 datetime string into a timezone-aware datetime."""
     return dtparser.parse(s)
+
+
+def format_readable_dt(dt: datetime) -> str:
+    """Format a datetime for human-readable logging, e.g. 'Jul 01, 2026 03:00 PM PDT'."""
+    return dt.strftime("%b %d, %Y %I:%M %p %Z").strip()
 
 
 def setup_logging() -> None:
