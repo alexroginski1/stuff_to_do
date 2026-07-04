@@ -29,21 +29,21 @@ SOURCES: dict[str, dict] = {
         "emoji": "😵‍💫",
         "display_url": "https://decentered.org/events",
         "calendar": "SF Arts/Culture",
-        "enabled": False,
+        "enabled": True,
     },
     "funcheap": {
         "label": "SF Funcheap",
         "emoji": "😜",
         "display_url": "https://sf.funcheap.com/region/san-francisco/",
         "calendar": "SF Fun Cheap",
-        "enabled": False,
+        "enabled": True,
     },
     "luma": {
         "label": "Luma",
         "emoji": "💡",
         "display_url": "https://luma.com/sf",
         "calendar": "SF Luma",
-        "enabled": False,
+        "enabled": True,
     },
     "decentered_community_events": {
         "label": "Decentered Community Events",
@@ -52,7 +52,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "👥",
         "display_url": "https://decentered.org/events",
         "calendar": "SF Community",
-        "enabled": False,
+        "enabled": True,
     },
     "mannys": {
         "label": "Manny's: Community, Politics, and Culture",
@@ -61,7 +61,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "👨‍🦰",
         "display_url": "https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512",
         "calendar": "SF Community",
-        "enabled": False,
+        "enabled": True,
     },
     "the_sf_nook": {
         "label": "The SF Nook: SF Event Space",
@@ -70,7 +70,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🏠",
         "display_url": "https://www.thesfnook.com/events",
         "calendar": "SF Community",
-        "enabled": False,
+        "enabled": True,
     },
     "luma_the_commons": {
         "label": "The Commons: Third Space",
@@ -79,7 +79,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🏛️",
         "display_url": "https://luma.com/thecommons",
         "calendar": "SF Community",
-        "enabled": False,
+        "enabled": True,
     },
     "luma_tiat": {
         "label": "TIAT Art and Tech",
@@ -88,7 +88,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🤖",
         "display_url": "https://luma.com/tiat",
         "calendar": "SF Arts/Culture",
-        "enabled": False,
+        "enabled": True,
     },
     "partiful": {
         "label": "Partiful",

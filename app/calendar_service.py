@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
+from functools import partial
 from typing import Optional
 
 import pytz
@@ -293,8 +294,16 @@ def delete_all_events(service, calendar_id: str, source: str | None = None) -> i
     return deleted
 
 
+_BATCH_SIZE = 50
+
+
 def delete_events_older_than(service, calendar_id: str, days: int = 7) -> int:
-    """Delete events on the calendar that started more than `days` days ago. Returns count deleted."""
+    """Delete events on the calendar that started more than `days` days ago. Returns count deleted.
+
+    Deletes are sent via the API's HTTP batch endpoint (up to _BATCH_SIZE per
+    request) instead of one call per event, since Calendar has no native
+    delete-by-query/range operation.
+    """
     deleted = 0
     page_token = None
     time_max = (datetime.now(tz=timezone.utc) - timedelta(days=days)).isoformat()
@@ -306,10 +315,27 @@ def delete_events_older_than(service, calendar_id: str, days: int = 7) -> int:
             maxResults=2500,
             pageToken=page_token,
         ).execute()
-        for event in resp.get("items", []):
-            service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
-            logger.info(f"[DELETE-OLD] {_gcal_event_display(event)}")
-            deleted += 1
+        events = resp.get("items", [])
+        for i in range(0, len(events), _BATCH_SIZE):
+            chunk = events[i : i + _BATCH_SIZE]
+            chunk_deleted = 0
+
+            def _on_response(request_id, response, exception, event=None):
+                nonlocal chunk_deleted
+                if exception is not None:
+                    logger.warning(f"[DELETE-OLD] failed for {_gcal_event_display(event)}: {exception}")
+                else:
+                    logger.info(f"[DELETE-OLD] {_gcal_event_display(event)}")
+                    chunk_deleted += 1
+
+            batch = service.new_batch_http_request()
+            for event in chunk:
+                batch.add(
+                    service.events().delete(calendarId=calendar_id, eventId=event["id"]),
+                    callback=partial(_on_response, event=event),
+                )
+            batch.execute()
+            deleted += chunk_deleted
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
