@@ -173,7 +173,7 @@ def _build_body(event: Event) -> dict:
     if event.source_url and event.source_url != source_display_url:
         parts.append(f'<a href="{event.source_url}">Event Link</a>')
     else:
-        parts.append("Event Link: no link provided. Visit venue calendar above ^")
+        parts.append("Event Link: see venue calendar above ^^")
 
     if eventbrite_price:
         parts.append(f"<b>Price: {eventbrite_price}</b>")
@@ -286,6 +286,29 @@ def delete_all_events(service, calendar_id: str, source: str | None = None) -> i
         for event in resp.get("items", []):
             service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
             logger.info(f"[DELETE] {_gcal_event_display(event)}")
+            deleted += 1
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    return deleted
+
+
+def delete_events_older_than(service, calendar_id: str, days: int = 7) -> int:
+    """Delete events on the calendar that started more than `days` days ago. Returns count deleted."""
+    deleted = 0
+    page_token = None
+    time_max = (datetime.now(tz=timezone.utc) - timedelta(days=days)).isoformat()
+    while True:
+        resp = service.events().list(
+            calendarId=calendar_id,
+            singleEvents=True,
+            timeMax=time_max,
+            maxResults=2500,
+            pageToken=page_token,
+        ).execute()
+        for event in resp.get("items", []):
+            service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
+            logger.info(f"[DELETE-OLD] {_gcal_event_display(event)}")
             deleted += 1
         page_token = resp.get("nextPageToken")
         if not page_token:

@@ -11,6 +11,7 @@ from app.calendar_service import (
     build_service,
     delete_all_events,
     delete_all_parser_events,
+    delete_events_older_than,
     fetch_existing_events,
     get_credentials,
     get_or_create_calendar,
@@ -153,5 +154,8 @@ def run_sync(
         for src, src_stats in per_source.items():
             for action in ("inserted", "updated", "skipped", "errors"):
                 emit_metric("sync_result", source=src, calendar=calendar_name, action=action, count=src_stats[action])
+
+        old_deleted = delete_events_older_than(service, calendar_id, days=7)
+        logger.info(f"[{calendar_name}] deleted old events={old_deleted}")
 
     push_history.save(history)
