@@ -33,24 +33,6 @@ def build_service(creds: Credentials):
     return build("calendar", "v3", credentials=creds)
 
 
-def get_or_create_calendar(service, name: str) -> str:
-    """Return the calendar ID for the named calendar, creating it if absent."""
-    page_token = None
-    while True:
-        resp = service.calendarList().list(pageToken=page_token).execute()
-        for cal in resp.get("items", []):
-            if cal.get("summary") == name:
-                logger.info(f"Found calendar '{name}' ({cal['id']})")
-                return cal["id"]
-        page_token = resp.get("nextPageToken")
-        if not page_token:
-            break
-
-    new_cal = service.calendars().insert(body={"summary": name}).execute()
-    logger.info(f"Created calendar '{name}' ({new_cal['id']})")
-    return new_cal["id"]
-
-
 def fetch_existing_events(service, calendar_id: str, source: str) -> dict[str, str]:
     """Return {unique_key: event_id} for all upcoming parser-created events from `source`."""
     result: dict[str, str] = {}

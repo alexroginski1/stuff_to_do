@@ -33,9 +33,21 @@ gcloud services enable \
   run.googleapis.com \
   cloudscheduler.googleapis.com \
   cloudbuild.googleapis.com \
+  secretmanager.googleapis.com \
   --project "$PROJECT_ID"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# ── Eventbrite token secret ───────────────────────────────────────────────────
+# The Eventbrite API token is a static bearer token, unrelated to the job's
+# service account / ADC. It lives in Secret Manager (never in the image or
+# git) as SECRET_NAME below. Create it once with:
+#   printf '%s' 'YOUR_EVENTBRITE_TOKEN' | gcloud secrets create eventbrite-api-token \
+#     --data-file=- --project "$PROJECT_ID"
+# and update it later with:
+#   printf '%s' 'NEW_TOKEN' | gcloud secrets versions add eventbrite-api-token \
+#     --data-file=- --project "$PROJECT_ID"
+SECRET_NAME="eventbrite-api-token"
 
 # ── Build and push container image ───────────────────────────────────────────
 echo "==> Building and pushing image..."
@@ -46,6 +58,13 @@ echo "==> Setting up job service account..."
 gcloud iam service-accounts create "$JOB_NAME-runner" \
   --display-name="Stuff To Do Job Runner" \
   --project "$PROJECT_ID" 2>/dev/null || true
+
+# Let the job's service account read the Eventbrite token secret.
+echo "==> Granting $JOB_SA access to secret $SECRET_NAME..."
+gcloud secrets add-iam-policy-binding "$SECRET_NAME" \
+  --member="serviceAccount:$JOB_SA" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project "$PROJECT_ID"
 
 # ── Create or update Cloud Run Job ───────────────────────────────────────────
 echo "==> Deploying Cloud Run Job..."
@@ -59,6 +78,7 @@ gcloud run jobs "$VERB" "$JOB_NAME" \
   --image "$IMAGE" \
   --service-account "$JOB_SA" \
   --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID" \
+  --set-secrets "EVENTBRITE_API_TOKEN=$SECRET_NAME:latest" \
   --memory 512Mi \
   --task-timeout 600 \
   --region "$REGION" \

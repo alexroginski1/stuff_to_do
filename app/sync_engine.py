@@ -15,13 +15,12 @@ from app.calendar_service import (
     delete_events_older_than,
     fetch_existing_events,
     get_credentials,
-    get_or_create_calendar,
     insert_event,
 )
 
 from app.event_model import Event
 from app.utils import emit_metric
-from config.settings import CALENDARS
+from config.settings import CALENDARS, CALENDAR_IDS
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +105,7 @@ def run_sync(
 
     for calendar_name, scraper_names in CALENDARS.items():
         logger.info(f"=== Calendar: {calendar_name} ===")
-        calendar_id = get_or_create_calendar(service, calendar_name)
+        calendar_id = CALENDAR_IDS[calendar_name]
 
         if delete_all_events_flag:
             deleted = delete_all_events(service, calendar_id, source=source)
