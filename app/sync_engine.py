@@ -13,6 +13,7 @@ from app.calendar_service import (
     delete_all_parser_events,
     delete_event,
     delete_events_older_than,
+    event_time_matches,
     fetch_existing_events,
     get_credentials,
     insert_event,
@@ -64,15 +65,28 @@ def _sync_source(service, calendar_id: str, source: str, events: List[Event]) ->
     present on the source get deleted. A changed event has a different key, so
     it naturally goes through both paths — delete the stale one, push the new
     one — rather than being updated in place.
+
+    Even when the key matches, the event is re-pushed (delete + insert) if its
+    actual start/end on the calendar no longer matches what the parser set —
+    e.g. someone manually dragged it to a new time. We never PATCH an event in
+    place, only delete stale ones and insert fresh ones.
     """
     existing = fetch_existing_events(service, calendar_id, source)
     fetched = {e.unique_key: e for e in events}
     stats = {"inserted": 0, "deleted": 0, "skipped": 0, "errors": 0}
 
     for key, event in fetched.items():
-        if key in existing:
+        if key in existing and event_time_matches(existing[key], event):
             stats["skipped"] += 1
             continue
+        if key in existing:
+            try:
+                delete_event(service, calendar_id, existing[key]["id"])
+                stats["deleted"] += 1
+                time.sleep(_API_DELAY)
+            except Exception as exc:
+                logger.error(f"Delete failed for drifted event '{event.name}': {exc}")
+                stats["errors"] += 1
         try:
             insert_event(service, calendar_id, event)
             stats["inserted"] += 1
@@ -81,11 +95,11 @@ def _sync_source(service, calendar_id: str, source: str, events: List[Event]) ->
             logger.error(f"Insert failed for '{event.name}': {exc}")
             stats["errors"] += 1
 
-    for key, event_id in existing.items():
+    for key, existing_event in existing.items():
         if key in fetched:
             continue
         try:
-            delete_event(service, calendar_id, event_id)
+            delete_event(service, calendar_id, existing_event["id"])
             stats["deleted"] += 1
             time.sleep(_API_DELAY)
         except Exception as exc:

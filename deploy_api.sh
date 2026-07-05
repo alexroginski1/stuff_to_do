@@ -2,9 +2,8 @@
 # Deploy the public stats API as an unauthenticated Cloud Run service.
 #
 # Serves the Firestore data the main job writes on every scheduler run (see
-# app/stats_store.py) as public JSON:
-#   GET /stats                      latest run, grouped by calendar
-#   GET /stats/history?calendar=&source=&limit=   past runs, most recent first
+# app/stats_store.py) as a single public HTML table, newest first:
+#   GET /?limit=200
 #
 # Prerequisites:
 #   - Run ./deploy.sh first — it provisions the Firestore database and the
@@ -61,5 +60,4 @@ gcloud run deploy "$SERVICE_NAME" \
 echo ""
 echo "Done! Public stats API:"
 URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --project "$PROJECT_ID" --format='value(status.url)')"
-echo "  $URL/stats"
-echo "  $URL/stats/history?calendar=<name>&source=<name>&limit=50"
+echo "  $URL/"

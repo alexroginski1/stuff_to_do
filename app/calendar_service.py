@@ -33,9 +33,14 @@ def build_service(creds: Credentials):
     return build("calendar", "v3", credentials=creds)
 
 
-def fetch_existing_events(service, calendar_id: str, source: str) -> dict[str, str]:
-    """Return {unique_key: event_id} for all upcoming parser-created events from `source`."""
-    result: dict[str, str] = {}
+def fetch_existing_events(service, calendar_id: str, source: str) -> dict[str, dict]:
+    """Return {unique_key: {"id", "start", "end"}} for all upcoming parser-created events from `source`.
+
+    `start`/`end` are the raw Calendar API time objects, so callers can detect
+    events that were manually edited on the calendar (same key, but the actual
+    start/end no longer matches what the parser would have set).
+    """
+    result: dict[str, dict] = {}
     time_min = (datetime.now(tz=timezone.utc) - timedelta(days=1)).isoformat()
     page_token = None
     props = [f"{_SOURCE_FIELD}={source}"]
@@ -54,7 +59,11 @@ def fetch_existing_events(service, calendar_id: str, source: str) -> dict[str, s
             private = item.get("extendedProperties", {}).get("private", {})
             key = private.get(_KEY_FIELD)
             if key:
-                result[key] = item["id"]
+                result[key] = {
+                    "id": item["id"],
+                    "start": item.get("start", {}),
+                    "end": item.get("end", {}),
+                }
 
         page_token = resp.get("nextPageToken")
         if not page_token:
@@ -70,9 +79,37 @@ def _gcal_datetime(dt: datetime) -> dict:
     return {"dateTime": dt.isoformat(), "timeZone": iana_name}
 
 
+def _normalize_dt(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        dt = pytz.timezone(DEFAULT_TIMEZONE).localize(dt)
+    return dt.astimezone(timezone.utc)
+
+
+def event_time_matches(existing: dict, event: Event) -> bool:
+    """True if `existing` (from fetch_existing_events) still has the start/end the parser set.
+
+    A manual edit on the calendar (e.g. dragging an event to a new time) doesn't
+    touch the private extendedProperty key, so the key-based match in the sync
+    engine would otherwise treat the event as unchanged. This catches that drift
+    so the caller can delete the stale event and recreate it instead of leaving
+    the manual edit in place.
+    """
+    expected_end = event.end_time or (event.start_time + timedelta(hours=1))
+    try:
+        actual_start = datetime.fromisoformat(existing["start"]["dateTime"])
+        actual_end = datetime.fromisoformat(existing["end"]["dateTime"])
+    except (KeyError, ValueError):
+        return False
+    return (
+        actual_start.astimezone(timezone.utc) == _normalize_dt(event.start_time)
+        and actual_end.astimezone(timezone.utc) == _normalize_dt(expected_end)
+    )
+
+
 _FOOTER = (
     "\n――――――――――\n"
-    '<a href="https://docs.google.com/spreadsheets/d/1x1EeFDPKNDULmW1_EE-4xsTcPV0RQ7pdZd4oK_fh0Dg/edit?gid=545113219#gid=545113219">SF Stuff To Do</a>'
+    '<a href="https://alexroginski.com/stuff_to_do/">SF Stuff To Do</a>'
+    "\n\nDo not edit this event! changes will be overwritten"
 )
 
 
