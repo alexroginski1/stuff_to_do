@@ -126,7 +126,6 @@ def _parse_eventbrite_event(e: dict, source: str) -> Optional["Event"]:
         description=(e.get("description") or {}).get("text"),
         source_url=e.get("url"),
         source=source,
-        unique_key=Event.build_unique_key(name, start),
     )
 
 

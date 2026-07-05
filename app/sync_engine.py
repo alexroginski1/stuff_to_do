@@ -11,16 +11,15 @@ from app.calendar_service import (
     build_service,
     delete_all_events,
     delete_all_parser_events,
+    delete_event,
     delete_events_older_than,
     fetch_existing_events,
     get_credentials,
     get_or_create_calendar,
     insert_event,
-    update_event,
 )
 
 from app.event_model import Event
-import app.push_history as push_history
 from app.utils import emit_metric
 from config.settings import CALENDARS
 
@@ -56,50 +55,44 @@ def _fetch_safe(scraper_name: str) -> List[Event]:
         return []
 
 
-def _sync_calendar(
-    service,
-    calendar_id: str,
-    calendar_name: str,
-    events: List[Event],
-    history: push_history.History,
-) -> tuple[dict, dict]:
-    existing = fetch_existing_events(service, calendar_id)
-    stats = {"inserted": 0, "updated": 0, "skipped": 0, "deleted": 0, "errors": 0}
-    per_source: dict[str, dict] = {}
+def _sync_source(service, calendar_id: str, source: str, events: List[Event]) -> dict:
+    """Sync a single source's currently-live events with the calendar.
 
-    for event in events:
-        src = event.source
-        if src not in per_source:
-            per_source[src] = {"inserted": 0, "updated": 0, "skipped": 0, "errors": 0}
-        key = event.unique_key
+    An event's identity is its unique_key (title + start + description +
+    location). Events present on the source but missing from the calendar get
+    pushed; events on the calendar (tagged to this source) that are no longer
+    present on the source get deleted. A changed event has a different key, so
+    it naturally goes through both paths — delete the stale one, push the new
+    one — rather than being updated in place.
+    """
+    existing = fetch_existing_events(service, calendar_id, source)
+    fetched = {e.unique_key: e for e in events}
+    stats = {"inserted": 0, "deleted": 0, "skipped": 0, "errors": 0}
+
+    for key, event in fetched.items():
+        if key in existing:
+            stats["skipped"] += 1
+            continue
         try:
-            if key in existing:
-                if existing[key]["content_hash"] != event.content_hash():
-                    update_event(service, calendar_id, existing[key]["event_id"], event)
-                    stats["updated"] += 1
-                    per_source[src]["updated"] += 1
-                    time.sleep(_API_DELAY)
-                else:
-                    print(f"[SKIP] {event.name} ({event.start_time}) — no changes")
-                    stats["skipped"] += 1
-                    per_source[src]["skipped"] += 1
-            elif push_history.was_pushed(history, calendar_name, key):
-                # Previously pushed but user deleted it — don't re-create
-                print(f"[SKIP] {event.name} ({event.start_time}) — previously deleted by user")
-                stats["skipped"] += 1
-                per_source[src]["skipped"] += 1
-            else:
-                insert_event(service, calendar_id, event)
-                push_history.record(history, calendar_name, key)
-                stats["inserted"] += 1
-                per_source[src]["inserted"] += 1
-                time.sleep(_API_DELAY)
+            insert_event(service, calendar_id, event)
+            stats["inserted"] += 1
+            time.sleep(_API_DELAY)
         except Exception as exc:
-            logger.error(f"Sync failed for '{event.name}': {exc}")
+            logger.error(f"Insert failed for '{event.name}': {exc}")
             stats["errors"] += 1
-            per_source[src]["errors"] += 1
 
-    return stats, per_source
+    for key, event_id in existing.items():
+        if key in fetched:
+            continue
+        try:
+            delete_event(service, calendar_id, event_id)
+            stats["deleted"] += 1
+            time.sleep(_API_DELAY)
+        except Exception as exc:
+            logger.error(f"Delete failed for key '{key}': {exc}")
+            stats["errors"] += 1
+
+    return stats
 
 
 def run_sync(
@@ -111,8 +104,6 @@ def run_sync(
     creds = get_credentials()
     service = build_service(creds)
 
-    history = push_history.prune(push_history.load())
-
     for calendar_name, scraper_names in CALENDARS.items():
         logger.info(f"=== Calendar: {calendar_name} ===")
         calendar_id = get_or_create_calendar(service, calendar_name)
@@ -123,39 +114,29 @@ def run_sync(
             continue
 
         if delete_parser_events:
-            deleted_keys = delete_all_parser_events(service, calendar_id, calendar_name, history, source=source)
+            deleted_keys = delete_all_parser_events(service, calendar_id, source=source)
             logger.info(f"[{calendar_name}] deleted parser events={len(deleted_keys)}")
             continue
 
-        raw_events: List[Event] = []
         for name in scraper_names:
             fetched = _fetch_safe(name)
             emit_metric("scraper_fetch", source=name, calendar=calendar_name, count=len(fetched))
             if num_events_per_source is not None:
                 fetched = fetched[:num_events_per_source]
-            raw_events.extend(fetched)
 
-        deduped: dict[str, Event] = {}
-        for e in raw_events:
-            deduped[e.unique_key] = e
+            deduped: dict[str, Event] = {e.unique_key: e for e in fetched}
+            events = _filter_events(list(deduped.values()))
+            logger.info(f"[{calendar_name}/{name}] {len(events)} events after date filtering")
 
-        events = _filter_events(list(deduped.values()))
-        logger.info(f"[{calendar_name}] {len(events)} events after date filtering")
+            stats = _sync_source(service, calendar_id, name, events)
+            logger.info(
+                f"[{calendar_name}/{name}] "
+                f"inserted={stats['inserted']} deleted={stats['deleted']} "
+                f"skipped={stats['skipped']} errors={stats['errors']}"
+            )
 
-        stats, per_source = _sync_calendar(service, calendar_id, calendar_name, events, history)
-        log_parts = [
-            f"inserted={stats['inserted']}",
-            f"updated={stats['updated']}",
-            f"skipped={stats['skipped']}",
-            f"errors={stats['errors']}",
-        ]
-        logger.info(f"[{calendar_name}] " + " ".join(log_parts))
-
-        for src, src_stats in per_source.items():
-            for action in ("inserted", "updated", "skipped", "errors"):
-                emit_metric("sync_result", source=src, calendar=calendar_name, action=action, count=src_stats[action])
+            for action in ("inserted", "deleted", "skipped", "errors"):
+                emit_metric("sync_result", source=name, calendar=calendar_name, action=action, count=stats[action])
 
         old_deleted = delete_events_older_than(service, calendar_id, days=7)
         logger.info(f"[{calendar_name}] deleted old events={old_deleted}")
-
-    push_history.save(history)

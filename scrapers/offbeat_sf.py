@@ -235,7 +235,6 @@ def _parse_page(html: str) -> List[Event]:
                 description=description,
                 source_url=url,
                 source=_SOURCE,
-                unique_key=Event.build_unique_key(name, start),
             )
         )
 

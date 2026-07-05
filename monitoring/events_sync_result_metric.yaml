@@ -1,7 +1,7 @@
 name: events_sync_result
 description: >
   Events processed during each sync run, labeled by source scraper, target
-  calendar, and action (inserted / updated / skipped / errors). Each log entry
+  calendar, and action (inserted / deleted / skipped / errors). Each log entry
   carries the count for that source+calendar+action combination.
 filter: 'jsonPayload.event_type="sync_result"'
 metricDescriptor:
@@ -17,7 +17,7 @@ metricDescriptor:
       description: Target Google Calendar name (e.g. SF Tech, SF Arts/Culture)
     - key: action
       valueType: STRING
-      description: "Action taken: inserted, updated, skipped, or errors"
+      description: "Action taken: inserted, deleted, skipped, or errors"
 labelExtractors:
   source: EXTRACT(jsonPayload.source)
   calendar: EXTRACT(jsonPayload.calendar)

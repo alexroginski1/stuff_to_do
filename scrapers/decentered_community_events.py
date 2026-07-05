@@ -79,7 +79,6 @@ def _parse_events(payload: dict) -> List[Event]:
                 description=e.get("description"),
                 source_url=e.get("link") or _URL,
                 source=_SOURCE,
-                unique_key=Event.build_unique_key(name, start_dt),
             )
         )
 

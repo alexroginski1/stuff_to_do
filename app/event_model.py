@@ -15,19 +15,19 @@ class Event:
     description: Optional[str]
     source_url: str
     source: str
-    unique_key: str
 
-    @staticmethod
-    def build_unique_key(name: str, start_time: datetime) -> str:
-        raw = name + start_time.isoformat()
-        return hashlib.sha256(raw.encode()).hexdigest()
+    @property
+    def unique_key(self) -> str:
+        """Identity of this event: title + start datetime + description + location.
 
-    def content_hash(self) -> str:
+        If any of these change, this hashes to a different key, so the sync
+        engine treats it as a new event (and the old one gets deleted as no
+        longer present) rather than updating in place.
+        """
         raw = "|".join([
             self.name,
             self.start_time.isoformat(),
-            self.end_time.isoformat() if self.end_time else "",
-            self.location or "",
             self.description or "",
+            self.location or "",
         ])
         return hashlib.sha256(raw.encode()).hexdigest()

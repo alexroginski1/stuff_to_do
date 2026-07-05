@@ -1,27 +1,30 @@
 from __future__ import annotations
 
-import os
-
-_BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-CLIENT_SECRETS_FILE = os.path.join(_BASE, "tokens", "client_secret.json")
-TOKEN_FILE = os.path.join(_BASE, "tokens", "token.json")
-PUSH_HISTORY_FILE = os.path.join(_BASE, "push_history.json")
-
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 DEFAULT_TIMEZONE = "America/Los_Angeles"
 
 SOURCES: dict[str, dict] = {
+
     "the_faight": {
         "label": "The Faight",
         "location": "Lower Haight",
         "location_link": "https://maps.app.goo.gl/sD1asWWUYL11KqmEA",
         "emoji": "🔮",
         "display_url": "https://www.thefaight.com/events",
-        "calendar": "SF Arts/Culture",
+        "calendar": "SF TESTING",
         "enabled": True,
     },
+
+    # "the_faight": {
+    #     "label": "The Faight",
+    #     "location": "Lower Haight",
+    #     "location_link": "https://maps.app.goo.gl/sD1asWWUYL11KqmEA",
+    #     "emoji": "🔮",
+    #     "display_url": "https://www.thefaight.com/events",
+    #     "calendar": "SF Arts/Culture",
+    #     "enabled": False,
+    # },
     "decentered_featured_events": {
         "label": "Decentered Featured Events",
         "location": "SOMA 8th St",
@@ -29,21 +32,21 @@ SOURCES: dict[str, dict] = {
         "emoji": "😵‍💫",
         "display_url": "https://decentered.org/events",
         "calendar": "SF Arts/Culture",
-        "enabled": True,
+        "enabled": False,
     },
     "funcheap": {
         "label": "SF Funcheap",
         "emoji": "😜",
         "display_url": "https://sf.funcheap.com/region/san-francisco/",
         "calendar": "SF Fun Cheap",
-        "enabled": True,
+        "enabled": False,
     },
     "luma": {
         "label": "Luma",
         "emoji": "💡",
         "display_url": "https://luma.com/sf",
         "calendar": "SF Luma",
-        "enabled": True,
+        "enabled": False,
     },
     "decentered_community_events": {
         "label": "Decentered Community Events",
@@ -52,7 +55,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "👥",
         "display_url": "https://decentered.org/events",
         "calendar": "SF Community",
-        "enabled": True,
+        "enabled": False,
     },
     "mannys": {
         "label": "Manny's: Community, Politics, and Culture",
@@ -61,7 +64,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "👨‍🦰",
         "display_url": "https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512",
         "calendar": "SF Community",
-        "enabled": True,
+        "enabled": False,
     },
     "the_sf_nook": {
         "label": "The SF Nook: SF Event Space",
@@ -70,7 +73,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🏠",
         "display_url": "https://www.thesfnook.com/events",
         "calendar": "SF Community",
-        "enabled": True,
+        "enabled": False,
     },
     "luma_the_commons": {
         "label": "The Commons: Third Space",
@@ -79,7 +82,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🏛️",
         "display_url": "https://luma.com/thecommons",
         "calendar": "SF Community",
-        "enabled": True,
+        "enabled": False,
     },
     "luma_tiat": {
         "label": "TIAT Art and Tech",
@@ -88,14 +91,14 @@ SOURCES: dict[str, dict] = {
         "emoji": "🤖",
         "display_url": "https://luma.com/tiat",
         "calendar": "SF Arts/Culture",
-        "enabled": True,
+        "enabled": False,
     },
     "partiful": {
         "label": "Partiful",
         "emoji": "🥳",
         "display_url": "https://partiful.com/explore/sf",
         "calendar": "SF Partiful",
-        "enabled": True,
+        "enabled": False,
     }
 }
 

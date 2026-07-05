@@ -126,7 +126,6 @@ def _parse_events(data: dict, source: str, sf_only: bool = False) -> List[Event]
             description=description,
             source_url=url,
             source=source,
-            unique_key=Event.build_unique_key(name, start),
         ))
 
     return results

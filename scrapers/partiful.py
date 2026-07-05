@@ -77,7 +77,6 @@ def _to_event(raw: dict) -> Event:
         description=raw.get("description"),
         source_url=raw["url"],
         source=_SOURCE,
-        unique_key=Event.build_unique_key(name, start),
     )
 
 

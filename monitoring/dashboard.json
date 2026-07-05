@@ -125,13 +125,13 @@
         "width": 6,
         "height": 4,
         "widget": {
-          "title": "Events Updated per Day by Source",
+          "title": "Events Deleted per Day by Source",
           "xyChart": {
             "dataSets": [
               {
                 "timeSeriesQuery": {
                   "timeSeriesFilter": {
-                    "filter": "metric.type=\"logging.googleapis.com/user/events_sync_result\" metric.labels.action=\"updated\"",
+                    "filter": "metric.type=\"logging.googleapis.com/user/events_sync_result\" metric.labels.action=\"deleted\"",
                     "aggregation": {
                       "alignmentPeriod": "86400s",
                       "perSeriesAligner": "ALIGN_SUM",

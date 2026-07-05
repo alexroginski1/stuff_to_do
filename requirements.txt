@@ -4,8 +4,4 @@ lxml>=4.9.0
 python-dateutil>=2.8.2
 pytz>=2024.1
 google-auth>=2.29.0
-google-auth-oauthlib>=1.2.0
 google-api-python-client>=2.127.0
-# GCP cloud deployment (Secret Manager + GCS)
-google-cloud-secret-manager>=2.20.0
-google-cloud-storage>=2.16.0

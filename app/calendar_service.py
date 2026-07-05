@@ -1,82 +1,31 @@
 from __future__ import annotations
 
-import json
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 from functools import partial
-from typing import Optional
 
+import google.auth
 import pytz
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.credentials import Credentials
 from googleapiclient.discovery import build
 
-import app.push_history as push_history
 from app.event_model import Event
 from app.utils import fetch_eventbrite_price, format_readable_dt
-from config.settings import CLIENT_SECRETS_FILE, DEFAULT_TIMEZONE, SCOPES, SOURCES, TOKEN_FILE
+from config.settings import DEFAULT_TIMEZONE, SCOPES, SOURCES
 
 logger = logging.getLogger(__name__)
 
 _KEY_FIELD = "unique_key"
-_HASH_FIELD = "content_hash"
 _SOURCE_FIELD = "source"
-
-_CLOUD_CLIENT_SECRET_NAME = "calendar-client-secret"
-_CLOUD_TOKEN_SECRET_NAME = "calendar-token"
 
 
 def get_credentials() -> Credentials:
-    from app.gcp import is_cloud
+    """Application Default Credentials — the Cloud Run job's attached service account.
 
-    if is_cloud():
-        return _get_cloud_credentials()
-    return _get_local_credentials()
-
-
-def _get_local_credentials() -> Credentials:
-    os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
-    creds: Optional[Credentials] = None
-
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-            except Exception as e:
-                logger.warning(f"Token refresh failed ({e}), re-authenticating...")
-                os.remove(TOKEN_FILE)
-                creds = None
-        if not creds or not creds.valid:
-            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
-            creds = flow.run_local_server(port=8080)
-        with open(TOKEN_FILE, "w") as f:
-            f.write(creds.to_json())
-
-    return creds
-
-
-def _get_cloud_credentials() -> Credentials:
-    from app.gcp import read_secret, write_secret
-
-    token_json = read_secret(_CLOUD_TOKEN_SECRET_NAME)
-    creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
-
-    if not creds.valid:
-        if creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            write_secret(_CLOUD_TOKEN_SECRET_NAME, creds.to_json())
-            logger.info("Cloud token refreshed and saved to Secret Manager")
-        else:
-            raise RuntimeError(
-                "Cloud credentials are invalid and cannot be refreshed non-interactively. "
-                "Run locally to obtain a fresh token.json, then re-upload it to Secret Manager."
-            )
-
+    Requires the target calendar(s) to be shared with that service account's
+    email, granting "Make changes to events". No token file, no refresh, no expiry.
+    """
+    creds, _ = google.auth.default(scopes=SCOPES)
     return creds
 
 
@@ -102,15 +51,17 @@ def get_or_create_calendar(service, name: str) -> str:
     return new_cal["id"]
 
 
-def fetch_existing_events(service, calendar_id: str) -> dict[str, dict]:
-    """Return {unique_key: {event_id, content_hash}} for all upcoming events."""
-    result: dict[str, dict] = {}
+def fetch_existing_events(service, calendar_id: str, source: str) -> dict[str, str]:
+    """Return {unique_key: event_id} for all upcoming parser-created events from `source`."""
+    result: dict[str, str] = {}
     time_min = (datetime.now(tz=timezone.utc) - timedelta(days=1)).isoformat()
     page_token = None
+    props = [f"{_SOURCE_FIELD}={source}"]
 
     while True:
         resp = service.events().list(
             calendarId=calendar_id,
+            privateExtendedProperty=props,
             singleEvents=True,
             maxResults=2500,
             timeMin=time_min,
@@ -121,10 +72,7 @@ def fetch_existing_events(service, calendar_id: str) -> dict[str, dict]:
             private = item.get("extendedProperties", {}).get("private", {})
             key = private.get(_KEY_FIELD)
             if key:
-                result[key] = {
-                    "event_id": item["id"],
-                    "content_hash": private.get(_HASH_FIELD, ""),
-                }
+                result[key] = item["id"]
 
         page_token = resp.get("nextPageToken")
         if not page_token:
@@ -200,7 +148,6 @@ def _build_body(event: Event) -> dict:
         "extendedProperties": {
             "private": {
                 _KEY_FIELD: event.unique_key,
-                _HASH_FIELD: event.content_hash(),
                 _SOURCE_FIELD: event.source,
                 "created_by": "event_parser",
                 "parser_version": "v1",
@@ -232,14 +179,11 @@ def delete_event(service, calendar_id: str, event_id: str) -> None:
 def delete_all_parser_events(
     service,
     calendar_id: str,
-    calendar_name: str,
-    history: push_history.History,
     source: str | None = None,
 ) -> list[str]:
     """Delete parser-created events from today onwards. Optionally filter by source.
 
-    Removes each deleted event's key from `history` (caller is responsible for
-    persisting it via push_history.save). Returns unique_keys of deleted events.
+    Returns the unique_keys of deleted events.
     """
     deleted_keys: list[str] = []
     page_token = None
@@ -262,7 +206,6 @@ def delete_all_parser_events(
             key = event.get("extendedProperties", {}).get("private", {}).get(_KEY_FIELD)
             if key:
                 deleted_keys.append(key)
-                push_history.remove(history, calendar_name, key)
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
@@ -345,10 +288,3 @@ def delete_events_older_than(service, calendar_id: str, days: int = 7) -> int:
 def insert_event(service, calendar_id: str, event: Event) -> None:
     service.events().insert(calendarId=calendar_id, body=_build_body(event)).execute()
     logger.info(f"[APPEND] {event.name} ({format_readable_dt(event.start_time)})")
-
-
-def update_event(service, calendar_id: str, event_id: str, event: Event) -> None:
-    service.events().update(
-        calendarId=calendar_id, eventId=event_id, body=_build_body(event)
-    ).execute()
-    logger.info(f"[UPDATE] {event.name} ({format_readable_dt(event.start_time)})")

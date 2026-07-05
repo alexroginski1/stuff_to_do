@@ -1,9 +1,6 @@
 # Google OAuth credentials — never commit these
 tokens/
 
-# Runtime state
-push_history.json
-
 # Python
 __pycache__/
 *.py[cod]
