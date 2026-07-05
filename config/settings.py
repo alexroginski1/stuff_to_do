@@ -36,7 +36,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🔮",
         "display_url": "https://www.thefaight.com/events",
         "calendar": "SF Arts/Culture",
-        "enabled": False,
+        "enabled": True,
     },
     "decentered_featured_events": {
         "label": "Decentered Featured Events",
@@ -45,7 +45,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "😵‍💫",
         "display_url": "https://decentered.org/events",
         "calendar": "SF Arts/Culture",
-        "enabled": False,
+        "enabled": True,
     },
     "funcheap": {
         "label": "SF Funcheap",
@@ -104,7 +104,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🤖",
         "display_url": "https://luma.com/tiat",
         "calendar": "SF Arts/Culture",
-        "enabled": False,
+        "enabled": True,
     },
     "partiful": {
         "label": "Partiful",

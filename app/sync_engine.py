@@ -19,6 +19,7 @@ from app.calendar_service import (
 )
 
 from app.event_model import Event
+from app.stats_store import record_stats
 from app.utils import emit_metric
 from config.settings import CALENDARS, CALENDAR_IDS
 
@@ -102,6 +103,7 @@ def run_sync(
 ) -> None:
     creds = get_credentials()
     service = build_service(creds)
+    run_id = datetime.now(tz=_TZ).isoformat()
 
     for calendar_name, scraper_names in CALENDARS.items():
         logger.info(f"=== Calendar: {calendar_name} ===")
@@ -136,6 +138,7 @@ def run_sync(
 
             for action in ("inserted", "deleted", "skipped", "errors"):
                 emit_metric("sync_result", source=name, calendar=calendar_name, action=action, count=stats[action])
+            record_stats(run_id, calendar_name, name, stats)
 
         old_deleted = delete_events_older_than(service, calendar_id, days=7)
         logger.info(f"[{calendar_name}] deleted old events={old_deleted}")

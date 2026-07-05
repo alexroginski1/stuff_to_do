@@ -34,9 +34,19 @@ gcloud services enable \
   cloudscheduler.googleapis.com \
   cloudbuild.googleapis.com \
   secretmanager.googleapis.com \
+  firestore.googleapis.com \
   --project "$PROJECT_ID"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# ── Firestore (stats database) ────────────────────────────────────────────────
+# Stores one document per (run, calendar, source) with insert/delete/skip/error
+# counts — see app/stats_store.py. Read publicly via the webapi/ service
+# (deploy_api.sh).
+echo "==> Ensuring Firestore database exists (Native mode)..."
+if ! gcloud firestore databases describe --database='(default)' --project "$PROJECT_ID" &>/dev/null; then
+  gcloud firestore databases create --location="$REGION" --type=firestore-native --project "$PROJECT_ID"
+fi
 
 # ── Eventbrite token secret ───────────────────────────────────────────────────
 # The Eventbrite API token is a static bearer token, unrelated to the job's
@@ -65,6 +75,13 @@ gcloud secrets add-iam-policy-binding "$SECRET_NAME" \
   --member="serviceAccount:$JOB_SA" \
   --role="roles/secretmanager.secretAccessor" \
   --project "$PROJECT_ID"
+
+# Let the job's service account write run stats to Firestore.
+echo "==> Granting $JOB_SA Firestore write access..."
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$JOB_SA" \
+  --role="roles/datastore.user" \
+  --condition=None >/dev/null
 
 # ── Create or update Cloud Run Job ───────────────────────────────────────────
 echo "==> Deploying Cloud Run Job..."
@@ -128,3 +145,6 @@ echo "  ./trigger.sh $PROJECT_ID"
 echo ""
 echo "To view logs:"
 echo "  gcloud logging read 'resource.type=cloud_run_job AND resource.labels.job_name=$JOB_NAME' --project $PROJECT_ID --limit 50"
+echo ""
+echo "To publish the public stats API (reads what this job writes to Firestore):"
+echo "  ./deploy_api.sh $PROJECT_ID"
