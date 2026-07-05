@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy stuff-to-do as a Cloud Run Job scheduled every 6 hours.
+# Deploy stuff-to-do as a Cloud Run Job scheduled every 12 hours.
 #
 # Prerequisites:
 #   - gcloud CLI installed and authenticated (gcloud auth login)
@@ -114,8 +114,8 @@ gcloud run jobs add-iam-policy-binding "$JOB_NAME" \
   --region "$REGION" \
   --project "$PROJECT_ID"
 
-# ── Cloud Scheduler: every 6 hours ───────────────────────────────────────────
-echo "==> Creating/updating Cloud Scheduler job (every 6 hours)..."
+# ── Cloud Scheduler: every 12 hours ──────────────────────────────────────────
+echo "==> Creating/updating Cloud Scheduler job (every 12 hours)..."
 JOB_URI="https://$REGION-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/$PROJECT_ID/jobs/$JOB_NAME:run"
 
 if gcloud scheduler jobs describe "$JOB_NAME-every-6h" \
@@ -126,7 +126,7 @@ else
 fi
 
 gcloud scheduler jobs "$SCHED_VERB" http "$JOB_NAME-every-6h" \
-  --schedule="0 */6 * * *" \
+  --schedule="0 */12 * * *" \
   --uri="$JOB_URI" \
   --message-body='{}' \
   --oauth-service-account-email="$SCHEDULER_SA" \
@@ -135,7 +135,7 @@ gcloud scheduler jobs "$SCHED_VERB" http "$JOB_NAME-every-6h" \
   --project "$PROJECT_ID"
 
 echo ""
-echo "Done! The job will run automatically every 6 hours."
+echo "Done! The job will run automatically every 12 hours."
 echo ""
 echo "If you haven't already, share each calendar in config/settings.py's"
 echo "CALENDARS with $JOB_SA, granting 'Make changes to events'."

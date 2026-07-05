@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Manually trigger the stuff-to-do Cloud Run Job — useful for testing changes
-# without waiting for the next scheduled run (every 6 hours).
+# without waiting for the next scheduled run (every 12 hours).
 #
 # Usage:
 #   ./trigger.sh <project_id>

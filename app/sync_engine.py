@@ -154,5 +154,5 @@ def run_sync(
                 emit_metric("sync_result", source=name, calendar=calendar_name, action=action, count=stats[action])
             record_stats(run_id, calendar_name, name, stats)
 
-        old_deleted = delete_events_older_than(service, calendar_id, days=7)
+        old_deleted = delete_events_older_than(service, calendar_id, days=3)
         logger.info(f"[{calendar_name}] deleted old events={old_deleted}")

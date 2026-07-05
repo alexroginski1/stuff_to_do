@@ -12,6 +12,20 @@ _client = firestore.Client()
 _COLLECTION = "sync_stats"
 _TZ = ZoneInfo("America/Los_Angeles")
 
+# Source key -> display label, kept in sync with SOURCES in config/settings.py.
+_SOURCE_LABELS = {
+    "the_faight": "The Faight",
+    "decentered_featured_events": "Decentered Featured Events",
+    "funcheap": "SF Funcheap",
+    "luma": "Luma",
+    "decentered_community_events": "Decentered Community Events",
+    "mannys": "Manny's: Community, Politics, and Culture",
+    "the_sf_nook": "The SF Nook: SF Event Space",
+    "luma_the_commons": "The Commons: Third Space",
+    "luma_tiat": "TIAT Art and Tech",
+    "partiful": "Partiful",
+}
+
 
 def _format_pdt(dt) -> str:
     """Format a Firestore timestamp as e.g. 'June 5, 7:14 PM' in Pacific time."""
@@ -35,7 +49,7 @@ def stats_table():
         (
             _format_pdt(d.get("timestamp")),
             d.get("calendar"),
-            d.get("source"),
+            _SOURCE_LABELS.get(d.get("source"), d.get("source")),
             d.get("inserted"),
             d.get("deleted"),
             d.get("skipped"),

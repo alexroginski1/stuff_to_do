@@ -9,11 +9,7 @@ DEFAULT_TIMEZONE = "America/Los_Angeles"
 # display name. This is what the service account needs to address the
 # calendar via the Calendar API.
 CALENDAR_LINKS = {
-    # "SF Arts/Culture": "7f66e10ca74622780fdf0db852f0dc8e4be2272cf206bfc8cf83f2eaefc8abdf@group.calendar.google.com",
-    "SF Arts/Culture": "ff26e0f326b9599bd9670190f7fac958a3c3a01577e9e7bcc5a9dfe71aa50b44@group.calendar.google.com",
-
-    
-
+    "SF Arts/Culture": "7f66e10ca74622780fdf0db852f0dc8e4be2272cf206bfc8cf83f2eaefc8abdf@group.calendar.google.com",
     "SF Community": "c40ce35591588f6a8cf1d14e96f4ec215f2d812857382a0fb7253eabea1a0154@group.calendar.google.com",
     "SF Fun Cheap": "60a19fdad14c75dc604082f022416e48c2d30dc440502a5e80bf410d32570d1d@group.calendar.google.com",
     "SF Partiful": "9d7c77c609ffc954909e2a0cb72e2c2b5029048fe87d0ba6a035ccac18e1472a@group.calendar.google.com",
@@ -52,14 +48,14 @@ SOURCES: dict[str, dict] = {
         "emoji": "😜",
         "display_url": "https://sf.funcheap.com/region/san-francisco/",
         "calendar": "SF Fun Cheap",
-        "enabled": False,
+        "enabled": True,
     },
     "luma": {
         "label": "Luma",
         "emoji": "💡",
         "display_url": "https://luma.com/sf",
         "calendar": "SF Luma",
-        "enabled": False,
+        "enabled": True,
     },
     "decentered_community_events": {
         "label": "Decentered Community Events",
@@ -68,7 +64,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "👥",
         "display_url": "https://decentered.org/events",
         "calendar": "SF Community",
-        "enabled": False,
+        "enabled": True,
     },
     "mannys": {
         "label": "Manny's: Community, Politics, and Culture",
@@ -77,7 +73,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "👨‍🦰",
         "display_url": "https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512",
         "calendar": "SF Community",
-        "enabled": False,
+        "enabled": True,
     },
     "the_sf_nook": {
         "label": "The SF Nook: SF Event Space",
@@ -86,7 +82,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🏠",
         "display_url": "https://www.thesfnook.com/events",
         "calendar": "SF Community",
-        "enabled": False,
+        "enabled": True,
     },
     "luma_the_commons": {
         "label": "The Commons: Third Space",
@@ -95,7 +91,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🏛️",
         "display_url": "https://luma.com/thecommons",
         "calendar": "SF Community",
-        "enabled": False,
+        "enabled": True,
     },
     "luma_tiat": {
         "label": "TIAT Art and Tech",
@@ -111,7 +107,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🥳",
         "display_url": "https://partiful.com/explore/sf",
         "calendar": "SF Partiful",
-        "enabled": False,
+        "enabled": True,
     }
 }
 

@@ -260,7 +260,10 @@ _BATCH_SIZE = 50
 
 
 def delete_events_older_than(service, calendar_id: str, days: int = 7) -> int:
-    """Delete events on the calendar that started more than `days` days ago. Returns count deleted.
+    """Delete parser-created events on the calendar that started more than `days` days ago.
+
+    Returns count deleted. Only events tagged `created_by=event_parser` are
+    considered, so manually-added calendar events are never swept up here.
 
     Deletes are sent via the API's HTTP batch endpoint (up to _BATCH_SIZE per
     request) instead of one call per event, since Calendar has no native
@@ -272,6 +275,7 @@ def delete_events_older_than(service, calendar_id: str, days: int = 7) -> int:
     while True:
         resp = service.events().list(
             calendarId=calendar_id,
+            privateExtendedProperty="created_by=event_parser",
             singleEvents=True,
             timeMax=time_max,
             maxResults=2500,
