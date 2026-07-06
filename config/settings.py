@@ -100,6 +100,13 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Community",
         "enabled": True,
     },
+    "the_sf_contemplarium": {
+        "label": "The SF Contemplarium",
+        "emoji": "📓",
+        "display_url": "https://luma.com/sfcontemplarium",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
     "luma_tiat": {
         "label": "TIAT Art and Tech",
         "location": "Downtown: Powell and O'Farrell",

@@ -23,6 +23,7 @@ _SOURCE_LABELS = {
     "the_sf_nook": "The SF Nook: SF Event Space",
     "luma_the_commons": "The Commons: Third Space",
     "luma_future_of_us": "Future of Us",
+    "the_sf_contemplarium": "The SF Contemplarium",
     "luma_tiat": "TIAT Art and Tech",
     "partiful": "Partiful",
 }
