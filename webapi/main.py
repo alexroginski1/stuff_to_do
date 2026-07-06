@@ -22,6 +22,7 @@ _SOURCE_LABELS = {
     "mannys": "Manny's: Community, Politics, and Culture",
     "the_sf_nook": "The SF Nook: SF Event Space",
     "luma_the_commons": "The Commons: Third Space",
+    "luma_future_of_us": "Future of Us",
     "luma_tiat": "TIAT Art and Tech",
     "partiful": "Partiful",
 }

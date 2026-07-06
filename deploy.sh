@@ -134,14 +134,17 @@ gcloud scheduler jobs "$SCHED_VERB" http "$JOB_NAME-every-6h" \
   --location "$REGION" \
   --project "$PROJECT_ID"
 
+# ── Kick off the first run immediately ───────────────────────────────────────
+# Cloud Scheduler only fires at the next 12-hour boundary (00:00/12:00 UTC),
+# which could be up to 12 hours away, so trigger the job directly here too.
+echo "==> Executing $JOB_NAME now for the first run..."
+gcloud run jobs execute "$JOB_NAME" --region "$REGION" --project "$PROJECT_ID"
+
 echo ""
-echo "Done! The job will run automatically every 12 hours."
+echo "Done! First run started now; subsequent runs happen automatically every 12 hours."
 echo ""
 echo "If you haven't already, share each calendar in config/settings.py's"
 echo "CALENDARS with $JOB_SA, granting 'Make changes to events'."
-echo ""
-echo "To run it manually for testing:"
-echo "  ./trigger.sh $PROJECT_ID"
 echo ""
 echo "To view logs:"
 echo "  gcloud logging read 'resource.type=cloud_run_job AND resource.labels.job_name=$JOB_NAME' --project $PROJECT_ID --limit 50"

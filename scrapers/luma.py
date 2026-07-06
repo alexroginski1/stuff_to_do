@@ -34,55 +34,6 @@ def _extract_json(html: str) -> dict:
     return json.loads(html)
 
 
-def _format_price(entry: dict) -> Optional[str]:
-    """
-    NOTE: ticket_info lives on `entry`, not `event`
-    """
-    ticket_info = entry.get("ticket_info") or {}
-
-    # 1. Free events
-    if ticket_info.get("is_free"):
-        return "Free"
-
-    price = ticket_info.get("price") or {}
-
-    # 2. Exact price
-    cents = price.get("cents")
-    currency = price.get("currency")
-
-    if cents is not None and currency == "usd":
-        dollars = cents / 100
-        return f"${int(dollars)}" if dollars.is_integer() else f"${dollars:.2f}"
-
-    # 3. Max price fallback
-    max_price = ticket_info.get("max_price")
-    if isinstance(max_price, dict):
-        cents = max_price.get("cents")
-        currency = max_price.get("currency")
-        if cents is not None and currency == "usd":
-            dollars = cents / 100
-            return (
-                f"Up to ${int(dollars)}"
-                if dollars.is_integer()
-                else f"Up to ${dollars:.2f}"
-            )
-
-    # 4. If ticket_info exists but no clear price
-    if ticket_info:
-        return "Paid"
-
-    return None
-
-
-def _build_description(url: str, price_str: Optional[str]) -> str:
-    parts = []
-
-    if price_str:
-        parts.append(f"Price: {price_str}")
-
-    return "\n".join(parts)
-
-
 def _parse_events(data: dict, source: str, sf_only: bool = False) -> List[Event]:
     results: List[Event] = []
 
@@ -108,22 +59,12 @@ def _parse_events(data: dict, source: str, sf_only: bool = False) -> List[Event]
         url = f"https://luma.com/{url_slug}" if url_slug else ""
         location = geo.get("sublocality") or geo.get("city")
 
-        # ✅ FIX: pass entry (not ev)
-        price_str = _format_price(entry)
-
-        # Append price to title
-        if price_str:
-            name = f"{name} ({price_str})"
-
-        # Build description
-        description = _build_description(url, price_str)
-
         results.append(Event(
             name=name,
             start_time=start,
             end_time=end,
             location=location,
-            description=description,
+            description="",
             source_url=url,
             source=source,
         ))

@@ -7,7 +7,7 @@ from app.event_model import Event
 from scrapers.luma import fetch_luma_events
 
 _SOURCE = Path(__file__).stem
-_URL = "https://api2.luma.com/calendar/get-items?calendar_api_id=cal-mdEwCbO9zZBtrtm&pagination_limit=20&period=future"
+_URL = "https://api.luma.com/calendar/get-items?calendar_api_id=cal-aUwxXUURWQ7Nz2A&pagination_limit=20&period=future"
 
 
 def fetch_events() -> List[Event]:

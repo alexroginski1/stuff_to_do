@@ -93,6 +93,13 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Community",
         "enabled": True,
     },
+    "luma_future_of_us": {
+        "label": "Future of Us",
+        "emoji": "⚡",
+        "display_url": "https://luma.com/future-of-us",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
     "luma_tiat": {
         "label": "TIAT Art and Tech",
         "location": "Downtown: Powell and O'Farrell",
