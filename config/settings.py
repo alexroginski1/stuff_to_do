@@ -122,6 +122,15 @@ SOURCES: dict[str, dict] = {
         "display_url": "https://partiful.com/explore/sf",
         "calendar": "SF Partiful",
         "enabled": True,
+    },
+    "mox": {
+        "label": "Mox Event Space",
+        "location": "Mission 13th St",
+        "location_link": "https://maps.app.goo.gl/1rUtdL99NgpzCrcbA",
+        "emoji": "💻",
+        "display_url": "https://moxsf.com/events",
+        "calendar": "SF Tech",
+        "enabled": True,
     }
 }
 
