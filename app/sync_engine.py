@@ -23,7 +23,7 @@ from app.calendar_service import (
 from app.event_model import Event
 from app.stats_store import record_stats
 from app.utils import emit_metric
-from config.settings import CALENDARS, CALENDAR_IDS
+from config.settings import CALENDARS, CALENDAR_IDS, DEDUP_RULES, DEFAULT_DEDUP_RULE
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,13 @@ def run_sync(
             logger.info(f"[{calendar_name}] deleted parser events={len(deleted_keys)}")
             continue
 
-        dup_count = delete_duplicate_events(service, calendar_id)
+        dedup_rule = DEDUP_RULES.get(calendar_name, DEFAULT_DEDUP_RULE)
+        dup_count = delete_duplicate_events(
+            service,
+            calendar_id,
+            fields=dedup_rule["fields"],
+            time_window_minutes=dedup_rule["time_window_minutes"],
+        )
         if dup_count:
             logger.info(f"[{calendar_name}] removed duplicate events={dup_count}")
 

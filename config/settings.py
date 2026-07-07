@@ -22,6 +22,25 @@ CALENDAR_LINKS = {
 CALENDAR_IDS: dict[str, str] = dict(CALENDAR_LINKS)
 
 
+# Per-calendar duplicate-detection rules, checked across every source feeding
+# that calendar (not just within one scraper) so e.g. two different arts
+# calendars covering the same gallery opening get caught. Two events are
+# duplicates if they match on every field in "fields" and their start times
+# are within "time_window_minutes" of each other. Matching is chained: if A
+# and B are within the window and B and C are within the window, A/B/C are
+# all treated as one duplicate group even if A and C alone are not.
+# Calendars not listed here fall back to DEFAULT_DEDUP_RULE (exact title +
+# exact start time, i.e. the original behavior).
+DEFAULT_DEDUP_RULE: dict = {"fields": ("summary",), "time_window_minutes": 0}
+
+DEDUP_RULES: dict[str, dict] = {
+    # Art gallery openings get posted with different titles/wording by
+    # different sources (e.g. ArtBae vs. ArtBusiness), but a real duplicate
+    # is always the same gallery at the same time, so match on location only.
+    "SF Arts/Culture": {"fields": ("location",), "time_window_minutes": 30},
+}
+
+
 
 
 SOURCES: dict[str, dict] = {
@@ -138,7 +157,14 @@ SOURCES: dict[str, dict] = {
         "display_url": "https://www.artbae.info/map-calendar",
         "calendar": "SF Arts/Culture",
         "enabled": True,
-    }
+    },
+    "artbusiness": {
+        "label": "SF Art Galleries - Openings & Events",
+        "emoji": "🖼️",
+        "display_url": "https://calendar.google.com/calendar/embed?src=33alanb%40gmail.com&ctz=America%2FLos_Angeles",
+        "calendar": "SF Arts/Culture",
+        "enabled": True,
+    },
 }
 
 # Maps Google Calendar display name → list of scraper module names (under scrapers/).

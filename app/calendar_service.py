@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 from functools import partial
+from typing import Optional
 
 import google.auth
 import pytz
@@ -231,19 +232,53 @@ def delete_all_parser_events(
     return deleted_keys
 
 
-def delete_duplicate_events(service, calendar_id: str) -> int:
-    """Find parser-created events that share the same title + start time and delete all but the oldest.
+def _event_start(event: dict) -> Optional[datetime]:
+    raw = event.get("start", {}).get("dateTime") or event.get("start", {}).get("date")
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _dedup_field_value(event: dict, field: str) -> str:
+    if field == "summary":
+        return (event.get("summary") or "").strip().lower()
+    if field == "location":
+        return (event.get("location") or "").strip().lower()
+    raise ValueError(f"unknown dedup field: {field}")
+
+
+def delete_duplicate_events(
+    service,
+    calendar_id: str,
+    fields: tuple[str, ...] = ("summary",),
+    time_window_minutes: int = 0,
+) -> int:
+    """Find parser-created events that are duplicates under `fields`/`time_window_minutes` and delete all but the oldest.
 
     `fetch_existing_events` keys events by `unique_key` and keeps only the last
     id it sees per key, so if duplicates are already on the calendar (e.g. from
-    an interrupted sync or overlapping job executions) normal syncing never
-    notices the extras — this pass looks at every parser-created event
-    directly instead of through that dict, grouping by what would visibly
-    read as "the same event" on the calendar rather than by unique_key, so it
-    also catches duplicates whose description happened to differ between runs.
+    an interrupted sync, overlapping job executions, or two different sources
+    covering the same real-world event) normal syncing never notices the
+    extras — this pass looks at every parser-created event on the whole
+    calendar directly instead of through that dict, so it catches duplicates
+    across sources too, not just within one.
+
+    Two events are duplicates if they match exactly on every field in
+    `fields` (e.g. "summary", "location") and their start times are within
+    `time_window_minutes` of each other. The time comparison is chained: events
+    are sorted by start and grouped into runs where each is within the window
+    of the previous one, so a whole cluster of near-simultaneous events counts
+    as one duplicate group even though the first and last in it may be further
+    apart than the window.
     """
     time_min = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    by_identity: dict[tuple[str, str], list[dict]] = {}
+    by_identity: dict[tuple[str, ...], list[dict]] = {}
     page_token = None
     while True:
         resp = service.events().list(
@@ -255,22 +290,33 @@ def delete_duplicate_events(service, calendar_id: str) -> int:
             pageToken=page_token,
         ).execute()
         for event in resp.get("items", []):
-            start = event.get("start", {}).get("dateTime") or event.get("start", {}).get("date") or ""
-            identity = (event.get("summary", ""), start)
+            if _event_start(event) is None:
+                continue
+            identity = tuple(_dedup_field_value(event, f) for f in fields)
             by_identity.setdefault(identity, []).append(event)
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
 
+    window = timedelta(minutes=time_window_minutes)
     deleted = 0
-    for dupes in by_identity.values():
-        if len(dupes) < 2:
-            continue
-        dupes.sort(key=lambda e: e.get("created", ""))
-        for event in dupes[1:]:
-            service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
-            logger.info(f"[DEDUPE] {_gcal_event_display(event)}")
-            deleted += 1
+    for group in by_identity.values():
+        group.sort(key=_event_start)
+        clusters: list[list[dict]] = []
+        for event in group:
+            if clusters and _event_start(event) - _event_start(clusters[-1][-1]) <= window:
+                clusters[-1].append(event)
+            else:
+                clusters.append([event])
+
+        for cluster in clusters:
+            if len(cluster) < 2:
+                continue
+            cluster.sort(key=lambda e: e.get("created", ""))
+            for event in cluster[1:]:
+                service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
+                logger.info(f"[DEDUPE] {_gcal_event_display(event)}")
+                deleted += 1
     return deleted
 
 
