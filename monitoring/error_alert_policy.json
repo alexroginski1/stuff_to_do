@@ -1,0 +1,32 @@
+{
+  "displayName": "Stuff To Do - Sync Errors",
+  "documentation": {
+    "content": "A stuff-to-do Cloud Run Job run reported one or more sync errors (scraper failures, or Calendar insert/delete failures). To see details:\n\n```\ngcloud logging read 'resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"stuff-to-do\" AND jsonPayload.event_type=\"sync_result\" AND jsonPayload.action=\"errors\" AND jsonPayload.count>0' --project PROJECT_ID_PLACEHOLDER --freshness=1d --limit 50\n```\n\nFor the underlying exception messages, drop the `jsonPayload` filters and search `severity>=ERROR` over the same time window and job name.",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "Sync errors > 0",
+      "conditionThreshold": {
+        "filter": "resource.type=\"cloud_run_job\" AND metric.type=\"logging.googleapis.com/user/events_sync_result\" AND metric.labels.action=\"errors\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0,
+        "duration": "0s",
+        "aggregations": [
+          {
+            "alignmentPeriod": "300s",
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupByFields": []
+          }
+        ],
+        "trigger": { "count": 1 }
+      }
+    }
+  ],
+  "notificationChannels": ["NOTIFICATION_CHANNEL_PLACEHOLDER"],
+  "alertStrategy": {
+    "autoClose": "604800s"
+  }
+}

@@ -28,3 +28,6 @@ gcloud monitoring dashboards create \
 echo ""
 echo "Done. Open Cloud Monitoring > Dashboards to see 'Stuff To Do – Event Sync'."
 echo "Note: metrics populate only after the next scheduled job run."
+echo ""
+echo "To get an email whenever a run has sync errors, run:"
+echo "  ./setup_error_alert.sh you@example.com"
