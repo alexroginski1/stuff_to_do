@@ -14,7 +14,8 @@ CALENDAR_LINKS = {
     "SF Fun Cheap": "60a19fdad14c75dc604082f022416e48c2d30dc440502a5e80bf410d32570d1d@group.calendar.google.com",
     "SF Partiful": "9d7c77c609ffc954909e2a0cb72e2c2b5029048fe87d0ba6a035ccac18e1472a@group.calendar.google.com",
     "SF Tech": "45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15@group.calendar.google.com",
-    "SF Bars": "704367c0fe7ec0383a79ab3bd6a4388d8c867642120862ffa11191fdb27e407f@group.calendar.google.com",
+    "SF Bars": "9c8685a68b697409a5bffa6ce3011651930fa18572dad9ef435215753a43de22@group.calendar.google.com",
+    "SF Dancing": "704367c0fe7ec0383a79ab3bd6a4388d8c867642120862ffa11191fdb27e407f@group.calendar.google.com",
 }
 
 
@@ -153,7 +154,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "artbae": {
-        "label": "art bae",
+        "label": "Art Bae",
         "emoji": "🎨",
         "display_url": "https://www.artbae.info/map-calendar",
         "calendar": "SF Arts/Culture",
@@ -168,9 +169,20 @@ SOURCES: dict[str, dict] = {
     },
     "madrone_art_bar": {
         "label": "Madrone Art Bar",
+        "location": "Alamo Square",
+        "location_link": "https://maps.app.goo.gl/drHLFmYXNrUshseR6",
         "emoji": "🎨",
         "display_url": "https://www.eventbrite.com/o/madrone-art-bar-33448786911",
         "calendar": "SF Bars",
+        "enabled": True,
+    },
+    "moonlit_moves": {
+        "label": "Moonlit Moves: Mission 22nd St",
+        "location": "The Polish Club Inc., 3040 22nd St",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=The+Polish+Club+Inc.%2C+3040+22nd+St%2C+San+Francisco%2C+CA+94110",
+        "emoji": "🌙",
+        "display_url": "https://calendar.google.com/calendar/embed?src=f3bfcf5b10ff8cb2ba35abba749ccd68bc8347e2d522e6baca32448c9b2695cc%40group.calendar.google.com&ctz=America%2FLos_Angeles",
+        "calendar": "SF Dancing",
         "enabled": True,
     },
 }
