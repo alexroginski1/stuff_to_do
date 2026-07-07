@@ -13,7 +13,7 @@ CALENDAR_LINKS = {
     "SF Community": "c40ce35591588f6a8cf1d14e96f4ec215f2d812857382a0fb7253eabea1a0154@group.calendar.google.com",
     "SF Fun Cheap": "60a19fdad14c75dc604082f022416e48c2d30dc440502a5e80bf410d32570d1d@group.calendar.google.com",
     "SF Partiful": "9d7c77c609ffc954909e2a0cb72e2c2b5029048fe87d0ba6a035ccac18e1472a@group.calendar.google.com",
-    "SF Luma": "45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15@group.calendar.google.com",
+    "SF Tech": "45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15@group.calendar.google.com",
 }
 
 
@@ -54,7 +54,7 @@ SOURCES: dict[str, dict] = {
         "label": "Luma",
         "emoji": "💡",
         "display_url": "https://luma.com/sf",
-        "calendar": "SF Luma",
+        "calendar": "SF Tech",
         "enabled": True,
     },
     "decentered_community_events": {
