@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import List, Optional
@@ -18,9 +18,12 @@ logger = logging.getLogger(__name__)
 _SOURCE = Path(__file__).stem
 _BASE_URL = "https://www.artbae.info"
 # Squarespace exposes the raw collection data for any page via ?format=json;
-# this is the "events" collection backing the site's map/calendar block.
-_EVENTS_URL = f"{_BASE_URL}/events?format=json"
+# the map-calendar page's calendar block is backed by the "openings-and-events"
+# collection, not the site-wide "events" collection (which also holds
+# long-running exhibitions we don't want).
+_EVENTS_URL = f"{_BASE_URL}/openings-and-events?format=json"
 _TZ = ZoneInfo("America/Los_Angeles")
+_MAX_DURATION = timedelta(days=1)
 
 
 def _parse_dt(ms: Optional[int]) -> Optional[datetime]:
@@ -58,10 +61,27 @@ def _location(raw: dict) -> Optional[str]:
     return ", ".join(p for p in parts if p) or None
 
 
+def _is_in_san_francisco(location: Optional[str]) -> bool:
+    """True if no location was given at all (nothing to filter on), or the
+    address is in San Francisco. False for other Bay Area cities (Oakland,
+    San Jose, Berkeley, ...)."""
+    if not location:
+        return True
+    return "san francisco" in location.lower()
+
+
 def _parse_event(raw: dict) -> Optional[Event]:
     name = (raw.get("title") or "").strip()
     start = _parse_dt(raw.get("startDate"))
     if not name or not start:
+        return None
+
+    end = _parse_dt(raw.get("endDate"))
+    if end and end - start > _MAX_DURATION:
+        return None
+
+    location = _location(raw)
+    if not _is_in_san_francisco(location):
         return None
 
     full_url = raw.get("fullUrl") or ""
@@ -69,8 +89,8 @@ def _parse_event(raw: dict) -> Optional[Event]:
     return Event(
         name=name,
         start_time=start,
-        end_time=_parse_dt(raw.get("endDate")),
-        location=_location(raw),
+        end_time=end,
+        location=location,
         description=_clean_html(raw.get("body"), name),
         source_url=f"{_BASE_URL}{full_url}" if full_url else _EVENTS_URL,
         source=_SOURCE,
