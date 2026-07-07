@@ -14,6 +14,7 @@ CALENDAR_LINKS = {
     "SF Fun Cheap": "60a19fdad14c75dc604082f022416e48c2d30dc440502a5e80bf410d32570d1d@group.calendar.google.com",
     "SF Partiful": "9d7c77c609ffc954909e2a0cb72e2c2b5029048fe87d0ba6a035ccac18e1472a@group.calendar.google.com",
     "SF Tech": "45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15@group.calendar.google.com",
+    "SF Bars": "704367c0fe7ec0383a79ab3bd6a4388d8c867642120862ffa11191fdb27e407f@group.calendar.google.com",
 }
 
 
@@ -163,6 +164,13 @@ SOURCES: dict[str, dict] = {
         "emoji": "🖼️",
         "display_url": "https://calendar.google.com/calendar/embed?src=33alanb%40gmail.com&ctz=America%2FLos_Angeles",
         "calendar": "SF Arts/Culture",
+        "enabled": True,
+    },
+    "madrone_art_bar": {
+        "label": "Madrone Art Bar",
+        "emoji": "🎨",
+        "display_url": "https://www.eventbrite.com/o/madrone-art-bar-33448786911",
+        "calendar": "SF Bars",
         "enabled": True,
     },
 }
