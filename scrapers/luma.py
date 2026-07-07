@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 import logging
 from datetime import datetime
@@ -28,14 +29,64 @@ def _parse_dt(s: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def _extract_text(node: dict) -> str:
-    """Flatten a Luma description_mirror (ProseMirror-style) doc into plain text."""
+def _render_marks(text: str, marks: List[dict], skip_bold: bool = False) -> str:
+    text = html.escape(text)
+    for mark in marks:
+        mtype = mark.get("type")
+        if mtype == "bold":
+            if not skip_bold:
+                text = f"<b>{text}</b>"
+        elif mtype == "italic":
+            text = f"<i>{text}</i>"
+        elif mtype == "link":
+            href = mark.get("attrs", {}).get("href")
+            if href:
+                text = f'<a href="{html.escape(href, quote=True)}">{text}</a>'
+    return text
+
+
+def _render_inline(nodes: list, skip_bold: bool = False) -> str:
     parts = []
-    if "text" in node:
-        parts.append(node["text"])
-    for child in node.get("content", []):
-        parts.append(_extract_text(child))
-    return "".join(parts) if "text" in node else " ".join(p for p in parts if p)
+    for node in nodes:
+        ntype = node.get("type")
+        if ntype == "text":
+            parts.append(_render_marks(node.get("text", ""), node.get("marks", []), skip_bold=skip_bold))
+        elif ntype == "hard_break":
+            parts.append("\n")
+        else:
+            parts.append(_render_inline(node.get("content", []), skip_bold=skip_bold))
+    return "".join(parts)
+
+
+def _render_block(node: dict) -> str:
+    """Render a single ProseMirror block node (and its children) to formatted text."""
+    ntype = node.get("type")
+    if ntype == "paragraph":
+        return _render_inline(node.get("content", []))
+    if ntype == "heading":
+        # Heading text nodes are already marked bold by Luma; skip_bold avoids
+        # double-wrapping since the whole heading gets one <b> below.
+        return f"<b>{_render_inline(node.get('content', []), skip_bold=True)}</b>"
+    if ntype == "horizontal_rule":
+        return "――――――――――"
+    if ntype == "list_item":
+        return "\n".join(_render_block(child) for child in node.get("content", []))
+    if ntype in ("bullet_list", "ordered_list"):
+        lines = []
+        for i, item in enumerate(node.get("content", []), start=1):
+            prefix = f"{i}. " if ntype == "ordered_list" else "• "
+            lines.append(prefix + _render_block(item))
+        return "\n".join(lines)
+    # Fallback for unrecognized block types: recurse into children.
+    return _render_inline(node.get("content", [])) if node.get("content") else node.get("text", "")
+
+
+def _render_doc(doc: dict) -> str:
+    """Render a Luma description_mirror (ProseMirror-style) doc, preserving paragraphs,
+    line breaks, lists, headings, and bold/italic/link formatting as inline HTML."""
+    blocks = [_render_block(node) for node in doc.get("content", [])]
+    lines = [line.rstrip() for line in "\n\n".join(b for b in blocks if b.strip()).split("\n")]
+    return "\n".join(lines).strip()
 
 
 def _fetch_description(api_id: str) -> str:
@@ -45,7 +96,7 @@ def _fetch_description(api_id: str) -> str:
         doc = data.get("description_mirror")
         if not doc:
             return ""
-        return " ".join(_extract_text(doc).split())
+        return _render_doc(doc)
     except Exception as exc:
         logger.warning(f"Failed to fetch description for {api_id}: {exc}")
         return ""

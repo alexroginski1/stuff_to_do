@@ -131,6 +131,13 @@ SOURCES: dict[str, dict] = {
         "display_url": "https://moxsf.com/events",
         "calendar": "SF Tech",
         "enabled": True,
+    },
+    "artbae": {
+        "label": "art bae",
+        "emoji": "🎨",
+        "display_url": "https://www.artbae.info/map-calendar",
+        "calendar": "SF Arts/Culture",
+        "enabled": True,
     }
 }
 
