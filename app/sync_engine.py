@@ -11,6 +11,7 @@ from app.calendar_service import (
     build_service,
     delete_all_events,
     delete_all_parser_events,
+    delete_duplicate_events,
     delete_event,
     delete_events_older_than,
     event_time_matches,
@@ -87,6 +88,9 @@ def _sync_source(service, calendar_id: str, source: str, events: List[Event]) ->
             except Exception as exc:
                 logger.error(f"Delete failed for drifted event '{event.name}': {exc}")
                 stats["errors"] += 1
+                # Skip the insert below — the stale event is still on the
+                # calendar, so inserting now would create a duplicate.
+                continue
         try:
             insert_event(service, calendar_id, event)
             stats["inserted"] += 1
@@ -132,6 +136,10 @@ def run_sync(
             deleted_keys = delete_all_parser_events(service, calendar_id, source=source)
             logger.info(f"[{calendar_name}] deleted parser events={len(deleted_keys)}")
             continue
+
+        dup_count = delete_duplicate_events(service, calendar_id)
+        if dup_count:
+            logger.info(f"[{calendar_name}] removed duplicate events={dup_count}")
 
         for name in scraper_names:
             fetched = _fetch_safe(name)
