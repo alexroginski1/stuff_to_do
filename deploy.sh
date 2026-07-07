@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy stuff-to-do as a Cloud Run Job scheduled every 12 hours.
+# Deploy stuff-to-do as a Cloud Run Job scheduled at 3 AM and 3 PM Pacific.
 #
 # Prerequisites:
 #   - gcloud CLI installed and authenticated (gcloud auth login)
@@ -114,8 +114,8 @@ gcloud run jobs add-iam-policy-binding "$JOB_NAME" \
   --region "$REGION" \
   --project "$PROJECT_ID"
 
-# ── Cloud Scheduler: every 12 hours ──────────────────────────────────────────
-echo "==> Creating/updating Cloud Scheduler job (every 12 hours)..."
+# ── Cloud Scheduler: 3 AM and 3 PM Pacific ───────────────────────────────────
+echo "==> Creating/updating Cloud Scheduler job (3 AM / 3 PM Pacific)..."
 JOB_URI="https://$REGION-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/$PROJECT_ID/jobs/$JOB_NAME:run"
 
 if gcloud scheduler jobs describe "$JOB_NAME-every-6h" \
@@ -126,7 +126,8 @@ else
 fi
 
 gcloud scheduler jobs "$SCHED_VERB" http "$JOB_NAME-every-6h" \
-  --schedule="0 */12 * * *" \
+  --schedule="0 3,15 * * *" \
+  --time-zone="America/Los_Angeles" \
   --uri="$JOB_URI" \
   --message-body='{}' \
   --oauth-service-account-email="$SCHEDULER_SA" \
@@ -134,13 +135,13 @@ gcloud scheduler jobs "$SCHED_VERB" http "$JOB_NAME-every-6h" \
   --location "$REGION" \
   --project "$PROJECT_ID"
 
-# ── Kick off a run immediately (time=0), every time this script runs ────────
-# Cloud Scheduler only fires at the next 12-hour boundary (00:00/12:00 UTC),
-# which could be up to 12 hours away, so trigger the job directly here too.
+# ── Kick off a run immediately, every time this script runs ─────────────────
+# Cloud Scheduler only fires at the next 3 AM/3 PM Pacific boundary, which
+# could be up to 12 hours away, so trigger the job directly here too.
 echo "==> Executing $JOB_NAME now..."
 gcloud run jobs execute "$JOB_NAME" --region "$REGION" --project "$PROJECT_ID"
 echo ""
-echo "Done! Run started now; subsequent runs happen automatically every 12 hours."
+echo "Done! Run started now; subsequent runs happen automatically at 3 AM and 3 PM Pacific."
 echo ""
 echo "If you haven't already, share each calendar in config/settings.py's"
 echo "CALENDARS with $JOB_SA, granting 'Make changes to events'."
