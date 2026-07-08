@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 _API_DELAY = 0.1  # seconds between Google Calendar write calls
 _TZ = ZoneInfo("America/Los_Angeles")
-_LOOKAHEAD_DAYS = 14  # 2 weeks
+_LOOKAHEAD_DAYS = 7
 
 
 def _filter_events(events: List[Event]) -> List[Event]:
@@ -117,6 +117,7 @@ def run_sync(
     num_events_per_source: int | None = None,
     delete_parser_events: bool = False,
     delete_all_events_flag: bool = False,
+    delete_all_events_before_push: bool = False,
     source: str | None = None,
 ) -> None:
     creds = get_credentials()
@@ -137,6 +138,10 @@ def run_sync(
             deleted_keys = delete_all_parser_events(service, calendar_id, source=source)
             logger.info(f"[{calendar_name}] deleted parser events={len(deleted_keys)}")
             continue
+
+        if delete_all_events_before_push:
+            deleted_keys = delete_all_parser_events(service, calendar_id, source=source)
+            logger.info(f"[{calendar_name}] deleted parser events before push={len(deleted_keys)}")
 
         dedup_rule = DEDUP_RULES.get(calendar_name, DEFAULT_DEDUP_RULE)
         dup_count = delete_duplicate_events(

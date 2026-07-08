@@ -183,7 +183,7 @@ SOURCES: dict[str, dict] = {
         "emoji": "🌙",
         "display_url": "https://calendar.google.com/calendar/embed?src=f3bfcf5b10ff8cb2ba35abba749ccd68bc8347e2d522e6baca32448c9b2695cc%40group.calendar.google.com&ctz=America%2FLos_Angeles",
         "calendar": "SF Dancing",
-        "enabled": True,
+        "enabled": False,
     },
 }
 

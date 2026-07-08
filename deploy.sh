@@ -13,9 +13,30 @@
 # Usage:
 #   GOOGLE_CLOUD_PROJECT=my-project ./deploy.sh
 #   ./deploy.sh my-project
+#   ./deploy.sh my-project --delete_all_events_before_push=True
 set -euo pipefail
 
-PROJECT_ID="${1:-${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT or pass it as argument}}"
+DELETE_ALL_EVENTS_BEFORE_PUSH=false
+POSITIONAL_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --delete_all_events_before_push=*)
+      case "${arg#*=}" in
+        [Tt]rue) DELETE_ALL_EVENTS_BEFORE_PUSH=true ;;
+        [Ff]alse) DELETE_ALL_EVENTS_BEFORE_PUSH=false ;;
+        *) echo "Invalid value for --delete_all_events_before_push: ${arg#*=} (expected True/False)" >&2; exit 1 ;;
+      esac
+      ;;
+    --delete_all_events_before_push)
+      DELETE_ALL_EVENTS_BEFORE_PUSH=true
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$arg")
+      ;;
+  esac
+done
+
+PROJECT_ID="${POSITIONAL_ARGS[0]:-${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT or pass it as argument}}"
 REGION="${REGION:-us-west1}"
 JOB_NAME="stuff-to-do"
 IMAGE="gcr.io/$PROJECT_ID/$JOB_NAME"
@@ -139,7 +160,13 @@ gcloud scheduler jobs "$SCHED_VERB" http "$JOB_NAME-every-6h" \
 # Cloud Scheduler only fires at the next 3 AM/3 PM Pacific boundary, which
 # could be up to 12 hours away, so trigger the job directly here too.
 echo "==> Executing $JOB_NAME now..."
-gcloud run jobs execute "$JOB_NAME" --region "$REGION" --project "$PROJECT_ID"
+if [ "$DELETE_ALL_EVENTS_BEFORE_PUSH" = true ]; then
+  echo "    (with --delete_all_events_before_push)"
+  gcloud run jobs execute "$JOB_NAME" --region "$REGION" --project "$PROJECT_ID" \
+    --args="--delete_all_events_before_push"
+else
+  gcloud run jobs execute "$JOB_NAME" --region "$REGION" --project "$PROJECT_ID"
+fi
 echo ""
 echo "Done! Run started now; subsequent runs happen automatically at 3 AM and 3 PM Pacific."
 echo ""
