@@ -176,6 +176,27 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Bars",
         "enabled": True,
     },
+    "sf_climate_action_club": {
+        "label": "SF Climate Action Club",
+        "emoji": "🌍",
+        "display_url": "https://luma.com/climateactionclub",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "gistirl": {
+        "label": "GistIRL: Make Friends and Network",
+        "emoji": "🤝",
+        "display_url": "https://app.gistirl.com/",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "unplug_and_play_collective": {
+        "label": "Unplug and Play Collective",
+        "emoji": "📵",
+        "display_url": "https://www.unplugandplaycollective.com/",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
     "moonlit_moves": {
         "label": "Moonlit Moves: Mission 22nd St",
         "location": "The Polish Club Inc., 3040 22nd St",
