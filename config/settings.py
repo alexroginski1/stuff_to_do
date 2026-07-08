@@ -183,6 +183,13 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Community",
         "enabled": True,
     },
+    "sf_craft_club": {
+        "label": "SF Craft Club",
+        "emoji": "🧶",
+        "display_url": "https://luma.com/user/sfcraftclub",
+        "calendar": "SF Arts/Culture",
+        "enabled": True,
+    },
     "gistirl": {
         "label": "GistIRL: Make Friends and Network",
         "emoji": "🤝",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime
 from typing import List, Optional
 from zoneinfo import ZoneInfo
@@ -61,13 +62,23 @@ def _parse_events(payload: dict) -> List[Event]:
     return events
 
 
+_MAX_ATTEMPTS = 3
+
+
 def fetch_events() -> List[Event]:
-    try:
-        resp = requests.get(_URL, timeout=15)
-        resp.raise_for_status()
-        payload = resp.json()
-    except Exception as exc:
-        logger.warning(f"[{_SOURCE}] failed to fetch events: {exc}")
+    payload = None
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            resp = requests.get(_URL, timeout=15)
+            resp.raise_for_status()
+            payload = resp.json()
+            break
+        except Exception as exc:
+            logger.warning(f"[{_SOURCE}] failed to fetch events (attempt {attempt}/{_MAX_ATTEMPTS}): {exc}")
+            if attempt < _MAX_ATTEMPTS:
+                time.sleep(2 * attempt)
+
+    if payload is None:
         return []
 
     events = _parse_events(payload)
