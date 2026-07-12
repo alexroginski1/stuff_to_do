@@ -139,6 +139,14 @@ def _build_body(event: Event) -> dict:
         location_str = ""
     parts = [f'<a href="{source_display_url}">{label}</a>{location_str}']
 
+    source_description = src_meta.get("description")
+    if source_description:
+        parts.append(source_description)
+
+    calendar_link = src_meta.get("calendar_link")
+    if calendar_link:
+        parts.append(f'<a href="{calendar_link}">Event source calendar</a>')
+
     if event.source_url and event.source_url != source_display_url:
         parts.append(f'<a href="{event.source_url}">Event Link</a>')
     else:
