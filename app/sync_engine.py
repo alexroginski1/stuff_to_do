@@ -21,6 +21,7 @@ from app.calendar_service import (
 )
 
 from app.event_model import Event
+from app.notifier import format_parsing_issues_email, send_error_email
 from app.stats_store import record_stats
 from app.utils import emit_metric
 from config.settings import CALENDARS, CALENDAR_IDS, DEDUP_RULES, DEFAULT_DEDUP_RULE
@@ -46,7 +47,7 @@ def _filter_events(events: List[Event]) -> List[Event]:
     return kept
 
 
-def _fetch_safe(scraper_name: str) -> List[Event]:
+def _fetch_safe(scraper_name: str, calendar_name: str, issues: List[dict]) -> List[Event]:
     try:
         module = importlib.import_module(f"scrapers.{scraper_name}")
         events = module.fetch_events()
@@ -54,10 +55,13 @@ def _fetch_safe(scraper_name: str) -> List[Event]:
         return events
     except Exception as exc:
         logger.error(f"[{scraper_name}] scraper failed: {exc}", exc_info=True)
+        issues.append({"calendar": calendar_name, "source": scraper_name, "message": f"Scraper failed: {exc}"})
         return []
 
 
-def _sync_source(service, calendar_id: str, source: str, events: List[Event]) -> dict:
+def _sync_source(
+    service, calendar_id: str, calendar_name: str, source: str, events: List[Event], issues: List[dict]
+) -> dict:
     """Sync a single source's currently-live events with the calendar.
 
     An event's identity is its unique_key (title + start + description +
@@ -88,6 +92,7 @@ def _sync_source(service, calendar_id: str, source: str, events: List[Event]) ->
             except Exception as exc:
                 logger.error(f"Delete failed for drifted event '{event.name}': {exc}")
                 stats["errors"] += 1
+                issues.append({"calendar": calendar_name, "source": source, "message": f"Delete failed for '{event.name}': {exc}"})
                 # Skip the insert below — the stale event is still on the
                 # calendar, so inserting now would create a duplicate.
                 continue
@@ -98,6 +103,7 @@ def _sync_source(service, calendar_id: str, source: str, events: List[Event]) ->
         except Exception as exc:
             logger.error(f"Insert failed for '{event.name}': {exc}")
             stats["errors"] += 1
+            issues.append({"calendar": calendar_name, "source": source, "message": f"Insert failed for '{event.name}': {exc}"})
 
     for key, existing_event in existing.items():
         if key in fetched:
@@ -109,6 +115,7 @@ def _sync_source(service, calendar_id: str, source: str, events: List[Event]) ->
         except Exception as exc:
             logger.error(f"Delete failed for key '{key}': {exc}")
             stats["errors"] += 1
+            issues.append({"calendar": calendar_name, "source": source, "message": f"Delete failed for '{key}': {exc}"})
 
     return stats
 
@@ -119,7 +126,10 @@ def run_sync(
     delete_all_events_flag: bool = False,
     delete_all_events_before_push: bool = False,
     source: str | None = None,
+    issues: List[dict] | None = None,
 ) -> None:
+    if issues is None:
+        issues = []
     creds = get_credentials()
     service = build_service(creds)
     run_started_at = datetime.now(tz=_TZ)
@@ -154,7 +164,7 @@ def run_sync(
             logger.info(f"[{calendar_name}] removed duplicate events={dup_count}")
 
         for name in scraper_names:
-            fetched = _fetch_safe(name)
+            fetched = _fetch_safe(name, calendar_name, issues)
             emit_metric("scraper_fetch", source=name, calendar=calendar_name, count=len(fetched))
             if num_events_per_source is not None:
                 fetched = fetched[:num_events_per_source]
@@ -163,7 +173,7 @@ def run_sync(
             events = _filter_events(list(deduped.values()))
             logger.info(f"[{calendar_name}/{name}] {len(events)} events after date filtering")
 
-            stats = _sync_source(service, calendar_id, name, events)
+            stats = _sync_source(service, calendar_id, calendar_name, name, events, issues)
             logger.info(
                 f"[{calendar_name}/{name}] "
                 f"inserted={stats['inserted']} deleted={stats['deleted']} "
@@ -176,3 +186,7 @@ def run_sync(
 
         old_deleted = delete_events_older_than(service, calendar_id, days=3)
         logger.info(f"[{calendar_name}] deleted old events={old_deleted}")
+
+    if issues:
+        subject, body = format_parsing_issues_email(issues, run_started_at)
+        send_error_email(subject, body)

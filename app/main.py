@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import traceback
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
+from app.notifier import format_crash_email, send_error_email
 from app.sync_engine import run_sync
 from app.utils import setup_logging
+
+_TZ = ZoneInfo("America/Los_Angeles")
 
 
 def main() -> None:
@@ -43,13 +49,21 @@ def main() -> None:
     args = parser.parse_args()
 
     setup_logging()
-    run_sync(
-        num_events_per_source=args.num_events_per_source,
-        delete_parser_events=args.delete_parser_events,
-        delete_all_events_flag=args.delete_all_events,
-        delete_all_events_before_push=args.delete_all_events_before_push,
-        source=args.source,
-    )
+    run_started_at = datetime.now(tz=_TZ)
+    issues: list[dict] = []
+    try:
+        run_sync(
+            num_events_per_source=args.num_events_per_source,
+            delete_parser_events=args.delete_parser_events,
+            delete_all_events_flag=args.delete_all_events,
+            delete_all_events_before_push=args.delete_all_events_before_push,
+            source=args.source,
+            issues=issues,
+        )
+    except Exception:
+        subject, body = format_crash_email(issues, traceback.format_exc(), run_started_at)
+        send_error_email(subject, body)
+        raise
 
 
 if __name__ == "__main__":

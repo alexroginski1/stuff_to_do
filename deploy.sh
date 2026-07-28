@@ -80,6 +80,17 @@ fi
 #     --data-file=- --project "$PROJECT_ID"
 SECRET_NAME="eventbrite-api-token"
 
+# ── Error alert email secret ──────────────────────────────────────────────────
+# app/notifier.py sends an email (via Gmail SMTP) whenever a run has parsing
+# errors or crashes outright. GMAIL_APP_PASSWORD is a Gmail app password for
+# the sending account (requires 2FA enabled on that account:
+# https://myaccount.google.com/apppasswords). Create the secret once with:
+#   printf '%s' 'YOUR_APP_PASSWORD' | gcloud secrets create gmail-app-password \
+#     --data-file=- --project "$PROJECT_ID"
+GMAIL_SECRET_NAME="gmail-app-password"
+GMAIL_SENDER_ADDRESS="roginskialexr@gmail.com"
+ALERT_EMAIL_TO="roginskialexr@gmail.com"
+
 # ── Build and push container image ───────────────────────────────────────────
 echo "==> Building and pushing image..."
 gcloud builds submit --tag "$IMAGE" --project "$PROJECT_ID" "$SCRIPT_DIR"
@@ -93,6 +104,12 @@ gcloud iam service-accounts create "$JOB_NAME-runner" \
 # Let the job's service account read the Eventbrite token secret.
 echo "==> Granting $JOB_SA access to secret $SECRET_NAME..."
 gcloud secrets add-iam-policy-binding "$SECRET_NAME" \
+  --member="serviceAccount:$JOB_SA" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project "$PROJECT_ID"
+
+echo "==> Granting $JOB_SA access to secret $GMAIL_SECRET_NAME..."
+gcloud secrets add-iam-policy-binding "$GMAIL_SECRET_NAME" \
   --member="serviceAccount:$JOB_SA" \
   --role="roles/secretmanager.secretAccessor" \
   --project "$PROJECT_ID"
@@ -115,8 +132,8 @@ fi
 gcloud run jobs "$VERB" "$JOB_NAME" \
   --image "$IMAGE" \
   --service-account "$JOB_SA" \
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID" \
-  --set-secrets "EVENTBRITE_API_TOKEN=$SECRET_NAME:latest" \
+  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GMAIL_SENDER_ADDRESS=$GMAIL_SENDER_ADDRESS,ALERT_EMAIL_TO=$ALERT_EMAIL_TO" \
+  --set-secrets "EVENTBRITE_API_TOKEN=$SECRET_NAME:latest,GMAIL_APP_PASSWORD=$GMAIL_SECRET_NAME:latest" \
   --memory 512Mi \
   --task-timeout 600 \
   --region "$REGION" \

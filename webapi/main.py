@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import google.auth
@@ -61,20 +61,23 @@ def _get_calendar_service():
 
 
 def _count_events_by_source(service, calendar_id: str) -> dict[str, int]:
-    """Return {source label: count} for all upcoming events on `calendar_id`.
+    """Return {source label: count} for events in the next 7 days on `calendar_id`.
 
     Events without a `source` private extended property (i.e. not created by
     the parser, such as events added directly on the calendar) are grouped
     under _MANUAL_LABEL.
     """
     counts: dict[str, int] = {}
-    time_min = datetime.now(tz=timezone.utc).isoformat()
+    now = datetime.now(tz=timezone.utc)
+    time_min = now.isoformat()
+    time_max = (now + timedelta(days=7)).isoformat()
     page_token = None
     while True:
         resp = service.events().list(
             calendarId=calendar_id,
             singleEvents=True,
             timeMin=time_min,
+            timeMax=time_max,
             maxResults=2500,
             pageToken=page_token,
         ).execute()
@@ -188,7 +191,7 @@ def events_by_source():
 </head>
 <body>
 <nav><a href="/">Sync Stats</a><a href="/by-source">Events by Source</a></nav>
-<h1>Events by Source</h1>
+<h1>Events by Source (Next 7 Days)</h1>
 <table>
   <thead>
     <tr><th>Calendar</th><th>Source</th><th>Events</th></tr>
