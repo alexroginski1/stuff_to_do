@@ -248,6 +248,20 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Sports/Exercise",
         "enabled": True,
     },
+    "nob_hill_run_club": {
+        "label": "Nob Hill Run Club",
+        "emoji": "🏃",
+        "display_url": "https://partiful.com/u/gaH33LxCrvQo0r1F2Y5M",
+        "calendar": "SF Sports/Exercise",
+        "enabled": True,
+    },
+    "gathersf": {
+        "label": "GatherSF",
+        "emoji": "👥",
+        "display_url": "https://partiful.com/u/HoM5CgWY4UxtI5vu9HtU",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
 }
 
 # Maps Google Calendar display name → list of scraper module names (under scrapers/).
