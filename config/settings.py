@@ -16,6 +16,7 @@ CALENDAR_LINKS = {
     "SF Tech": "45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15@group.calendar.google.com",
     "SF Bars": "9c8685a68b697409a5bffa6ce3011651930fa18572dad9ef435215753a43de22@group.calendar.google.com",
     "SF Dancing": "704367c0fe7ec0383a79ab3bd6a4388d8c867642120862ffa11191fdb27e407f@group.calendar.google.com",
+    "SF Sports/Exercise": "2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f@group.calendar.google.com",
 }
 
 
@@ -224,6 +225,27 @@ SOURCES: dict[str, dict] = {
         "display_url": "https://calendar.google.com/calendar/embed?src=88c5018286c9ab2d0e27326287e61a2b5d42b3ed4008ba650b81f054f65026dd%40group.calendar.google.com&ctz=America%2FLos_Angeles",
         "calendar_link": "https://calendar.google.com/calendar/embed?src=88c5018286c9ab2d0e27326287e61a2b5d42b3ed4008ba650b81f054f65026dd%40group.calendar.google.com&ctz=America%2FLos_Angeles",
         "calendar": "SF Community",
+        "enabled": True,
+    },
+    "midnight_runners": {
+        "label": "Midnight Runners SF",
+        "emoji": "🏃",
+        "display_url": "https://www.heylo.com/g/-LmBjhGfivWBeac11cNQ",
+        "calendar": "SF Sports/Exercise",
+        "enabled": True,
+    },
+    "november_project": {
+        "label": "November Project SF",
+        "emoji": "🏃",
+        "display_url": "https://www.heylo.com/g/48f5e552-13d3-4987-bd0b-66e8855dfd46",
+        "calendar": "SF Sports/Exercise",
+        "enabled": True,
+    },
+    "page_street_fit": {
+        "label": "Page Street Fit",
+        "emoji": "🏃",
+        "display_url": "https://www.heylo.com/g/6e3b8574-b970-4713-995a-1c641daeca26",
+        "calendar": "SF Sports/Exercise",
         "enabled": True,
     },
 }

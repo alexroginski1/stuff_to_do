@@ -33,6 +33,8 @@ _SOURCE_LABELS = {
     "the_sf_contemplarium": "The SF Contemplarium",
     "luma_tiat": "TIAT Art and Tech",
     "partiful": "Partiful",
+    "midnight_runners": "Midnight Runners SF",
+    "november_project": "November Project SF",
 }
 
 # Calendar display name -> Google Calendar ID, kept in sync with CALENDAR_IDS in config/settings.py.
@@ -44,6 +46,7 @@ _CALENDAR_IDS = {
     "SF Tech": "45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15@group.calendar.google.com",
     "SF Bars": "9c8685a68b697409a5bffa6ce3011651930fa18572dad9ef435215753a43de22@group.calendar.google.com",
     "SF Dancing": "704367c0fe7ec0383a79ab3bd6a4388d8c867642120862ffa11191fdb27e407f@group.calendar.google.com",
+    "SF Sports/Exercise": "2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f@group.calendar.google.com",
 }
 
 
