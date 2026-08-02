@@ -60,14 +60,17 @@ def _get_calendar_service():
     return _calendar_service
 
 
-def _count_events_by_source(service, calendar_id: str) -> dict[str, int]:
-    """Return {source label: count} for events in the next 7 days on `calendar_id`.
+def _count_events_by_source(service, calendar_id: str) -> tuple[dict[str, int], list[str]]:
+    """Return ({source label: count}, sorted unique manual event titles) for
+    events in the next 7 days on `calendar_id`.
 
     Events without a `source` private extended property (i.e. not created by
     the parser, such as events added directly on the calendar) are grouped
-    under _MANUAL_LABEL.
+    under _MANUAL_LABEL, and their titles are collected separately so the
+    manual bucket can be broken down by event name.
     """
     counts: dict[str, int] = {}
+    manual_titles: set[str] = set()
     now = datetime.now(tz=timezone.utc)
     time_min = now.isoformat()
     time_max = (now + timedelta(days=7)).isoformat()
@@ -85,10 +88,12 @@ def _count_events_by_source(service, calendar_id: str) -> dict[str, int]:
             source = item.get("extendedProperties", {}).get("private", {}).get("source")
             label = _SOURCE_LABELS.get(source, source) if source else _MANUAL_LABEL
             counts[label] = counts.get(label, 0) + 1
+            if not source:
+                manual_titles.add(item.get("summary", "(no title)"))
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
-    return counts
+    return counts, sorted(manual_titles)
 
 
 def _format_pdt(dt) -> str:
@@ -165,13 +170,19 @@ def events_by_source():
 
     body_rows = ""
     for cal_name, cal_id in _CALENDAR_IDS.items():
-        counts = _count_events_by_source(service, cal_id)
+        counts, manual_titles = _count_events_by_source(service, cal_id)
         total = sum(counts.values())
         if not counts:
             body_rows += f'<tr><td>{escape(cal_name)}</td><td colspan="2">No upcoming events</td></tr>\n'
             continue
         for source_label, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
             body_rows += f"<tr><td>{escape(cal_name)}</td><td>{escape(source_label)}</td><td>{count}</td></tr>\n"
+            if source_label == _MANUAL_LABEL and manual_titles:
+                titles_html = "".join(f"<li>{escape(t)}</li>" for t in manual_titles)
+                body_rows += (
+                    f'<tr class="detail"><td></td><td colspan="2">'
+                    f"<ul>{titles_html}</ul></td></tr>\n"
+                )
         body_rows += f'<tr class="total"><td>{escape(cal_name)}</td><td>Total</td><td>{total}</td></tr>\n'
 
     return f"""<!doctype html>
@@ -186,6 +197,8 @@ def events_by_source():
   th, td:nth-child(1), td:nth-child(2) {{ text-align: left; }}
   th {{ background: #f4f4f4; }}
   tr.total {{ font-weight: bold; background: #eef; }}
+  tr.detail td {{ text-align: left; color: #555; font-size: 0.9em; }}
+  tr.detail ul {{ margin: 0.2rem 0; padding-left: 1.5rem; }}
   nav a {{ margin-right: 1rem; }}
 </style>
 </head>
