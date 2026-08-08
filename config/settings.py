@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 DEFAULT_TIMEZONE = "America/Los_Angeles"

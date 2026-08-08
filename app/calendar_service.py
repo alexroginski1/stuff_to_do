@@ -73,6 +73,36 @@ def fetch_existing_events(service, calendar_id: str, source: str) -> dict[str, d
     return result
 
 
+def fetch_all_events(service, calendar_id: str, days_ahead: int) -> list[dict]:
+    """Return every event (manual and parser-created) on `calendar_id` from now through `days_ahead` days out.
+
+    Unlike `fetch_existing_events`, this has no `source` extended-property
+    filter, so it also picks up events added directly on the calendar. Used
+    to build the public event snapshot, which reflects everything actually
+    on the calendar rather than just what the parser last pushed.
+    """
+    events: list[dict] = []
+    time_min = datetime.now(tz=timezone.utc).isoformat()
+    time_max = (datetime.now(tz=timezone.utc) + timedelta(days=days_ahead)).isoformat()
+    page_token = None
+
+    while True:
+        resp = service.events().list(
+            calendarId=calendar_id,
+            singleEvents=True,
+            timeMin=time_min,
+            timeMax=time_max,
+            maxResults=2500,
+            pageToken=page_token,
+        ).execute()
+        events.extend(resp.get("items", []))
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+
+    return events
+
+
 def _gcal_datetime(dt: datetime) -> dict:
     if dt.tzinfo is None:
         dt = pytz.timezone(DEFAULT_TIMEZONE).localize(dt)

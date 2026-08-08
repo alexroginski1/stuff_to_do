@@ -55,7 +55,10 @@ def _parse_events(payload: dict) -> List[Event]:
             name=name.strip(),
             start_time=start,
             end_time=None,
-            location=e.get("hostname") or address,
+            # `address` is a full street address; `hostname` is just a place
+            # name (e.g. "Music Concourse") that's ambiguous for geocoding,
+            # so only fall back to it when no address is given at all.
+            location=address or e.get("hostname"),
             description=e.get("description"),
             source_url=_DISPLAY_URL,
             source=_SOURCE,

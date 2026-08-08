@@ -57,7 +57,7 @@ def _extract_raw(raw: dict) -> dict:
         "start": raw.get("startDate"),
         "end": raw.get("endDate"),
         "timezone": raw.get("timezone") or DEFAULT_TIMEZONE,
-        "location": " ".join(
+        "location": ", ".join(
             raw.get("locationInfo", {}).get("displayAddressLines", [])
         ).strip() or None,
         "url": f"https://partiful.com/e/{raw.get('id')}",

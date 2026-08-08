@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 _SOURCE = Path(__file__).stem
 _URL = "https://www.thefaight.com/events"
-_LOCATION = "475 Haight St, San Francisco"
+_LOCATION = "473A Haight St, San Francisco, CA 94117"
 
 
 def _extract_initial_events(html: str) -> List[dict]:

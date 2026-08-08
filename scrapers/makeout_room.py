@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 _SOURCE = Path(__file__).stem
 _BASE_URL = "http://www.makeoutroom.com/"
 _TZ = ZoneInfo("America/Los_Angeles")
+_LOCATION = "Make-Out Room, 3225 22nd St, San Francisco, CA 94110"
 
 
 # --- Regex --------------------------------------------------------------------
@@ -211,7 +212,7 @@ def _parse_page(html: str) -> List[Event]:
                     name=name,
                     start_time=start,
                     end_time=end,
-                    location="Make-Out Room, San Francisco",
+                    location=_LOCATION,
                     description=description,
                     source_url=url,
                     source=_SOURCE,

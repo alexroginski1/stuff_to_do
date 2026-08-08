@@ -20,7 +20,7 @@ _BASE_URL = "https://www.dnalounge.com/calendar/latest.html"
 _TZ = ZoneInfo("America/Los_Angeles")
 
 # DNA Lounge always in SF
-_LOCATION = "DNA Lounge, San Francisco"
+_LOCATION = "DNA Lounge, 375 11th St, San Francisco, CA 94103"
 
 # Example: "Mon Apr 20"
 _DATE_RE = re.compile(r"\b([A-Za-z]{3}) ([A-Za-z]{3}) (\d{1,2})\b")

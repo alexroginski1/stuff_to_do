@@ -55,11 +55,15 @@ def _parse_page(html: str) -> List[Event]:
         if end is not None and end < start:
             end += timedelta(days=1)
 
-        # Location is the last bare span (no class attribute) in the meta div
+        # Location is the last bare span (no class attribute) in the meta div,
+        # e.g. "The Function" or "Davies Symphony Hall" — a venue name with no
+        # city/state, so append it for reliable geocoding.
         location: Optional[str] = None
         for span in meta.find_all("span", recursive=False):
             if not span.get("class"):
                 location = span.get_text(strip=True) or None
+        if location and "san francisco" not in location.lower():
+            location = f"{location}, San Francisco, CA"
 
         # Title and URL are in the sibling span.title.entry-title > a
         parent = meta.parent

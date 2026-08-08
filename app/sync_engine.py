@@ -15,12 +15,14 @@ from app.calendar_service import (
     delete_event,
     delete_events_older_than,
     event_time_matches,
+    fetch_all_events,
     fetch_existing_events,
     get_credentials,
     insert_event,
 )
 
 from app.event_model import Event
+from app.event_snapshot_store import write_snapshot
 from app.notifier import format_parsing_issues_email, send_error_email
 from app.stats_store import record_stats
 from app.utils import emit_metric
@@ -30,12 +32,47 @@ logger = logging.getLogger(__name__)
 
 _API_DELAY = 0.1  # seconds between Google Calendar write calls
 _TZ = ZoneInfo("America/Los_Angeles")
-_LOOKAHEAD_DAYS = 7
+_LOOKAHEAD_DAYS = 7  # how far ahead events get pushed to Google Calendar
+_SNAPSHOT_LOOKAHEAD_DAYS = 30  # how far ahead the public "/" events table looks
 
 
-def _filter_events(events: List[Event]) -> List[Event]:
+def _parse_gcal_datetime(raw: dict) -> datetime | None:
+    value = raw.get("dateTime") or raw.get("date")
+    if not value:
+        return None
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=_TZ)
+    return dt
+
+
+def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
+    """Build an event_snapshot_store record from a raw Calendar API event resource.
+
+    `created_by=event_parser` is the same private extendedProperty the sync
+    engine stamps on every event it inserts (see calendar_service._build_body),
+    so its absence means the event was added directly on the calendar.
+    """
+    start_time = _parse_gcal_datetime(event.get("start", {}))
+    if start_time is None:
+        return None
+    end_time = _parse_gcal_datetime(event.get("end", {})) or (start_time + timedelta(hours=1))
+    is_automatic = event.get("extendedProperties", {}).get("private", {}).get("created_by") == "event_parser"
+    return {
+        "gcal_id": event["id"],
+        "title": event.get("summary") or "(no title)",
+        "description": event.get("description") or "",
+        "start_time": start_time,
+        "end_time": end_time,
+        "location": event.get("location") or "",
+        "calendar": calendar_name,
+        "source_type": "automatic" if is_automatic else "manual",
+    }
+
+
+def _filter_events(events: List[Event], days: int = _LOOKAHEAD_DAYS) -> List[Event]:
     today = datetime.now(tz=_TZ).date()
-    cutoff = today + timedelta(days=_LOOKAHEAD_DAYS)
+    cutoff = today + timedelta(days=days)
     kept = []
     for e in events:
         event_date = e.start_time.astimezone(_TZ).date()
@@ -186,6 +223,15 @@ def run_sync(
 
         old_deleted = delete_events_older_than(service, calendar_id, days=3)
         logger.info(f"[{calendar_name}] deleted old events={old_deleted}")
+
+    if not delete_all_events_flag and not delete_parser_events:
+        snapshot_records = []
+        for calendar_name, calendar_id in CALENDAR_IDS.items():
+            for event in fetch_all_events(service, calendar_id, days_ahead=_SNAPSHOT_LOOKAHEAD_DAYS):
+                record = _snapshot_record(calendar_name, event)
+                if record:
+                    snapshot_records.append(record)
+        write_snapshot(run_id, run_started_at, snapshot_records)
 
     if issues:
         subject, body = format_parsing_issues_email(issues, run_started_at)

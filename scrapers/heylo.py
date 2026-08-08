@@ -56,13 +56,31 @@ def _fetch_event_detail(event_id: str, source: str) -> Optional[dict]:
     return (data or {}).get("event")
 
 
+def _location(detail: dict) -> Optional[str]:
+    """Prefer the fully expanded street address (with number) that Heylo
+    exposes under locationData.address; its `label` (and the plain `location`
+    text field) drop the street number, e.g. "Underdogs Cantina, King Street,
+    San Francisco, CA, USA" instead of "128 King Street".
+    """
+    location_data = detail.get("locationData") or {}
+    address = location_data.get("address") or {}
+    street = address.get("streetAddress")
+    city = address.get("addressLocality")
+    if street and city:
+        region = address.get("addressRegion")
+        postal = address.get("postalCode")
+        tail = f"{city}, {region} {postal}".strip() if region else city
+        return f"{street}, {tail}"
+    return location_data.get("label") or detail.get("location") or None
+
+
 def _to_event(detail: dict, source: str, title_prefix: str) -> Optional[Event]:
     name = detail.get("name")
     start = _parse_ms(detail.get("timestamp"))
     if not name or not start:
         return None
 
-    location = detail.get("location") or (detail.get("locationData") or {}).get("label")
+    location = _location(detail)
     event_id = detail["eventId"]
 
     return Event(

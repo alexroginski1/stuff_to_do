@@ -136,7 +136,9 @@ def fetch_eventbrite_organizer_events(
     all_events: list = []
     for page in range(1, max_pages + 1):
         try:
-            data = _eventbrite_get(f"/organizers/{organizer_id}/events/", {"page": page})
+            data = _eventbrite_get(
+                f"/organizers/{organizer_id}/events/", {"page": page, "expand": "venue"}
+            )
         except Exception as exc:
             logger.warning(f"[{source}] failed to fetch Eventbrite page {page}: {exc}")
             break

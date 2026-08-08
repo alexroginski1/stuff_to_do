@@ -132,7 +132,12 @@ def _parse_events(data: dict, source: str, sf_only: bool = False) -> List[Event]
             continue
 
         url = f"https://luma.com/{url_slug}" if url_slug else ""
-        location = geo.get("sublocality") or geo.get("city")
+        # Luma gives a full geocodable address (`full_address`) for events with
+        # `mode: "shown"`, but hides it behind just a neighborhood
+        # (`sublocality`) for events with `mode: "obfuscated"` until you RSVP.
+        # Use the precise address when available; fall back to the
+        # neighborhood name alone, then city, rather than guessing.
+        location = geo.get("full_address") or geo.get("sublocality") or geo.get("city")
         description = _fetch_description(ev["api_id"]) if ev.get("api_id") else ""
 
         results.append(Event(

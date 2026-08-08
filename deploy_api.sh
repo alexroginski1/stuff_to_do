@@ -1,22 +1,19 @@
 #!/usr/bin/env bash
 # Deploy the public stats API as an unauthenticated Cloud Run service.
 #
-# Two pages:
-#   GET /            Firestore sync-run history (app/stats_store.py), newest first.
-#   GET /by-source    Live count of upcoming events per calendar, broken down by
-#                     event source (reads the Calendar API directly; events with
-#                     no `source` extended property, e.g. manually added ones,
-#                     are grouped under "Manually Added Events").
+# Two pages, both read straight from Firestore (no Calendar API calls at
+# page-load time):
+#   GET /             Single source of truth: every event currently on the
+#                      calendar in the next 30 days (title, description,
+#                      start/end, location, source calendar, manual/automatic),
+#                      read from the Firestore snapshot that app/sync_engine.py
+#                      rewrites at the end of every scheduler run
+#                      (app/event_snapshot_store.py).
+#   GET /sync-stats    Firestore sync-run history (app/stats_store.py), newest first.
 #
 # Prerequisites:
-#   - Run ./deploy.sh first — it provisions the Firestore database, the job
-#     that populates it, and the stuff-to-do-runner service account (shared
-#     on every calendar in config/settings.py's CALENDAR_IDS, with "Make
-#     changes to events"). This service runs as that same account, so no
-#     separate calendar-sharing step is needed for /by-source. Note this
-#     means the public, unauthenticated /by-source endpoint executes with
-#     write-capable calendar credentials (it only ever calls read methods,
-#     but the credential itself isn't restricted to read).
+#   - Run ./deploy.sh first — it provisions the Firestore database and the
+#     job that populates it.
 #
 # Usage:
 #   GOOGLE_CLOUD_PROJECT=my-project ./deploy_api.sh
@@ -57,4 +54,4 @@ echo ""
 echo "Done! Public stats API:"
 URL="$(gcloud run services describe "$SERVICE_NAME" --region "$REGION" --project "$PROJECT_ID" --format='value(status.url)')"
 echo "  $URL/"
-echo "  $URL/by-source"
+echo "  $URL/sync-stats"

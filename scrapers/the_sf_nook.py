@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 _SOURCE = Path(__file__).stem
 _URL = "https://www.thesfnook.com/api/events"
 _TZ = ZoneInfo("America/Los_Angeles")
+# The API has no address field, only "hostedBy" (an org name, not a
+# location). The Nook is a single fixed venue, so hardcode its address.
+_LOCATION = "The SF Nook, 1234 Market St, San Francisco, CA 94102"
 
 
 def _parse_iso_dt(dt_str: Optional[str]) -> Optional[datetime]:
@@ -52,7 +55,7 @@ def _parse_events(payload: dict) -> List[Event]:
                 name=name,
                 start_time=start_dt,
                 end_time=_parse_iso_dt(e.get("endTime")),
-                location=e.get("hostedBy"),  # fallback since no address field
+                location=_LOCATION,
                 description=e.get("description"),
                 source_url=e.get("link") or _URL,
                 source=_SOURCE,

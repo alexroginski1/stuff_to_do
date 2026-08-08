@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 _SOURCE = Path(__file__).stem
 _BASE_URL = "https://decentered.org/events"
 _TZ = ZoneInfo("America/Los_Angeles")
+# Featured events run at Decentered's own studio; the page data only exposes
+# location as an unresolvable Airtable record ID, so hardcode the venue.
+_LOCATION = "Decentered Arts Studio, 1175 Folsom St, San Francisco, CA 94103"
 
 
 def _parse_time_range(date_str: str, time_str: str) -> tuple[Optional[datetime], Optional[datetime]]:
@@ -92,14 +95,11 @@ def _parse_page(html: str) -> List[Event]:
             if not name or not start:
                 continue
 
-            # Location is an ID reference → not directly usable
-            location = None
-
             events.append(Event(
                 name=name.strip(),
                 start_time=start,
                 end_time=end,
-                location=location,
+                location=_LOCATION,
                 description=description,
                 source_url=url,
                 source=_SOURCE,
