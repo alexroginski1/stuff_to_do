@@ -56,9 +56,19 @@ def _clean_html(html: Optional[str], name: str) -> Optional[str]:
 
 
 def _location(raw: dict) -> Optional[str]:
+    """Build a plain, mappable address — deliberately excluding addressTitle
+    (the venue/gallery name). Prefixing it produces addresses like "re.riddle,
+    1275 Minnesota Street, San Francisco, California, 94107" for a studio
+    inside the shared Minnesota Street Project building: geocoders resolve the
+    street address fine but choke on the studio name prepended to it, and
+    addressTitle sometimes just duplicates addressLine1 verbatim (e.g.
+    "Winslow House Project, Winslow House Project, Vallejo, CA"). Fall back to
+    the venue title only when there's no address at all.
+    """
     loc = raw.get("location") or {}
-    parts = [loc.get("addressTitle"), loc.get("addressLine1"), loc.get("addressLine2")]
-    return ", ".join(p for p in parts if p) or None
+    parts = [loc.get("addressLine1"), loc.get("addressLine2")]
+    address = ", ".join(p.strip() for p in parts if p and p.strip())
+    return address or (loc.get("addressTitle") or "").strip() or None
 
 
 def _is_in_san_francisco(location: Optional[str]) -> bool:

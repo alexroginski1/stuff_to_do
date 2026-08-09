@@ -85,6 +85,12 @@ def events_table():
         .limit(limit)
     )
 
+    # Every document in a given scheduler run shares the same "timestamp"
+    # (see app.event_snapshot_store.write_snapshot, which replaces the whole
+    # collection each run), so the first doc's value is the run datetime.
+    docs = [doc.to_dict() for doc in query.stream()]
+    last_run = _format_pdt(docs[0].get("timestamp")) if docs else ""
+
     body_rows = "\n".join(
         f"<tr><td>{escape(d.get('title'))}</td>"
         f"<td>{_sanitize_description(d.get('description'))}</td>"
@@ -95,7 +101,7 @@ def events_table():
         f"<td>{escape(d.get('location_type') or '')}</td>"
         f"<td>{escape(d.get('calendar') or '')}</td>"
         f"<td>{escape(d.get('source_type') or '')}</td></tr>"
-        for d in (doc.to_dict() for doc in query.stream())
+        for d in docs
     ) or '<tr><td colspan="7">No upcoming events</td></tr>'
 
     return f"""<!doctype html>
@@ -116,6 +122,7 @@ def events_table():
 <body>
 <nav><a href="/">Events</a><a href="/sync-stats">Sync Stats</a></nav>
 <h1>Events (Next 30 Days)</h1>
+<p>Last scheduler run: {escape(last_run) or "unknown"}</p>
 <table>
   <thead>
     <tr><th>Event Title</th><th>Event Description</th><th>Start</th><th>End</th>
