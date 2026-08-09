@@ -3,7 +3,10 @@
     "allow": [
       "Bash(python3 -c ' *)",
       "WebFetch(domain:partiful.com)",
-      "Bash(python3 -c \"from config.settings import SOURCES, CALENDARS; print\\(SOURCES['sf_chess_club']\\); print\\(CALENDARS.get\\('SF Community'\\)\\)\")"
+      "Bash(python3 -c \"from config.settings import SOURCES, CALENDARS; print\\(SOURCES['sf_chess_club']\\); print\\(CALENDARS.get\\('SF Community'\\)\\)\")",
+      "Bash(python3 -c \"import google.cloud.firestore\")",
+      "Bash(gcloud auth *)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/calendar_service.py'\\).read\\(\\)\\); ast.parse\\(open\\('app/sync_engine.py'\\).read\\(\\)\\)\")"
     ]
   }
 }

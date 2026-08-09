@@ -11,6 +11,7 @@ from google.auth.credentials import Credentials
 from googleapiclient.discovery import build
 
 from app.event_model import Event
+from app.location_service import NOT_FOUND, resolve_location
 from app.utils import fetch_eventbrite_price, format_readable_dt
 from config.settings import DEFAULT_TIMEZONE, SCOPES, SOURCES
 
@@ -147,11 +148,30 @@ def _price_lines(description: str) -> list[str]:
     return [line for line in description.splitlines() if "$" in line]
 
 
+def _resolve_event_location(event: Event) -> str:
+    """Resolve `event.location` (raw, scraped) to the address to put on the calendar event.
+
+    Skips the Places lookup entirely when a scraper already hardcoded a
+    known-correct address (`event.location_verified`). Otherwise resolves via
+    Google Places and falls back to the raw location whenever that lookup
+    doesn't produce a usable result (API error, missing key, zero results, or
+    an area name rather than a specific venue) — never NOT_FOUND on the
+    actual calendar event.
+    """
+    raw = event.location or ""
+    if event.location_verified or not raw:
+        return raw
+    cleaned, _ = resolve_location(raw)
+    return raw if cleaned == NOT_FOUND else cleaned
+
+
 def _build_body(event: Event) -> dict:
     end = event.end_time or (event.start_time + timedelta(hours=1))
     src_meta = SOURCES.get(event.source, {})
     label = src_meta.get("label", event.source)
     source_display_url = src_meta.get("display_url", event.source_url)
+    raw_location = event.location or ""
+    resolved_location = _resolve_event_location(event)
 
     # Fetch price for Eventbrite events
     eventbrite_price: str | None = None
@@ -184,6 +204,9 @@ def _build_body(event: Event) -> dict:
     if eventbrite_price:
         parts.append(f"<b>Price: {eventbrite_price}</b>")
 
+    if raw_location:
+        parts.append(f'location provided by event source: "{raw_location}"')
+
     if event.description:
         prices = _price_lines(event.description)
         if prices:
@@ -199,7 +222,7 @@ def _build_body(event: Event) -> dict:
     return {
         "summary": summary,
         "description": description.strip(),
-        "location": event.location,
+        "location": resolved_location,
         "start": _gcal_datetime(event.start_time),
         "end": _gcal_datetime(end),
         "extendedProperties": {
@@ -209,6 +232,7 @@ def _build_body(event: Event) -> dict:
                 "created_by": "event_parser",
                 "parser_version": "v1",
                 "location_verified": "true" if event.location_verified else "false",
+                "raw_location": raw_location,
             }
         },
     }

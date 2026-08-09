@@ -1,0 +1,48 @@
+"""Delete all documents from the `event_snapshot` and `location_cache`
+Firestore collections, so the next job run re-resolves every location from
+scratch via the (now current) Google Places logic in app/location_service.py.
+
+Both collections need clearing: `event_snapshot` backs the "Raw Location" /
+"Clean Location" table at the stats API root, and `location_cache` is the
+persistent cache that resolve_location() checks *before* calling Places —
+leaving it in place would just replay the stale deprecated-method values.
+
+Run from the repo root:
+    python -m scripts.clear_location_data
+"""
+
+from __future__ import annotations
+
+import logging
+
+from google.cloud import firestore
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+_COLLECTIONS = ["event_snapshot", "location_cache"]
+_BATCH_SIZE = 500
+
+
+def _delete_collection(client: firestore.Client, name: str) -> None:
+    collection = client.collection(name)
+    deleted = 0
+    while True:
+        docs = list(collection.limit(_BATCH_SIZE).stream())
+        if not docs:
+            break
+        batch = client.batch()
+        for doc in docs:
+            batch.delete(doc.reference)
+        batch.commit()
+        deleted += len(docs)
+    logging.info(f"[{name}] deleted {deleted} documents")
+
+
+def main() -> None:
+    client = firestore.Client()
+    for name in _COLLECTIONS:
+        _delete_collection(client, name)
+
+
+if __name__ == "__main__":
+    main()
