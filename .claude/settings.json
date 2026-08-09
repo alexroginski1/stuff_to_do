@@ -7,7 +7,13 @@
       "Bash(python3 -c \"import google.cloud.firestore\")",
       "Bash(gcloud auth *)",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/calendar_service.py'\\).read\\(\\)\\); ast.parse\\(open\\('app/sync_engine.py'\\).read\\(\\)\\)\")",
-      "Bash(python3 -m py_compile scrapers/partiful.py)"
+      "Bash(python3 -m py_compile scrapers/partiful.py)",
+      "WebFetch(domain:stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app)",
+      "Bash(git -C /Users/alexroginski/Documents/stuff_to_do show 4f73710 --stat)",
+      "Bash(git -C /Users/alexroginski/Documents/stuff_to_do show 4f73710)",
+      "Bash(curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/\" -o /tmp/events.html)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/sync_engine.py'\\).read\\(\\)\\)\")",
+      "Bash(echo \"parse_exit=$?\")"
     ]
   }
 }

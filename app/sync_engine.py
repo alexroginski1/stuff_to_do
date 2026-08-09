@@ -62,9 +62,17 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
     # For parser-created events, the calendar's "location" field holds the
     # Places-resolved address (see calendar_service._build_body), not the
     # original scraped string, so the true raw location has to come from the
-    # private extendedProperty stashed alongside it instead.
+    # private extendedProperty stashed alongside it instead. Events pushed
+    # before that property existed (pre 4f73710) never get re-inserted just
+    # to pick it up — their unique_key (title+start+description+location)
+    # hasn't changed, so the sync engine's key-based diff always finds them
+    # unchanged and skips them. For those, the calendar's "location" field
+    # *is* the raw string, since the old insert path wrote it there directly
+    # without any Places resolution.
     if is_automatic:
-        raw_location = private_props.get("raw_location") or ""
+        raw_location = private_props.get("raw_location")
+        if raw_location is None:
+            raw_location = event.get("location") or ""
     else:
         raw_location = event.get("location") or ""
     if private_props.get("location_verified") == "true":
