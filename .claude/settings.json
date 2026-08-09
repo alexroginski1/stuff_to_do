@@ -22,7 +22,10 @@
       "Bash(curl -s \"https://sf.funcheap.com/region/san-francisco/\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/a99dfec7-4ee4-476d-801b-c1b30164bae2/scratchpad/funcheap.html)",
       "Bash(curl -s \"https://calendar.google.com/calendar/ical/6395b6c6ab85cf5ff3b6a1e59bc218ec592b74bfebf94821158bcf7e56c23ab1%40group.calendar.google.com/public/basic.ics\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/a99dfec7-4ee4-476d-801b-c1b30164bae2/scratchpad/mox.ics)",
       "Bash(gcloud config *)",
-      "Bash(gcloud run *)"
+      "Bash(gcloud run *)",
+      "Bash(python3 -m py_compile scrapers/heylo.py)",
+      "Bash(env)",
+      "Bash(curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/b5ef0a8f-df9d-4281-b128-b56e0feed021/scratchpad/events.html)"
     ]
   }
 }

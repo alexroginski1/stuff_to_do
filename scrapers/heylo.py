@@ -61,6 +61,13 @@ def _location(detail: dict) -> Optional[str]:
     exposes under locationData.address; its `label` (and the plain `location`
     text field) drop the street number, e.g. "Underdogs Cantina, King Street,
     San Francisco, CA, USA" instead of "128 King Street".
+
+    When there's no street number (parks, meadows, etc.), the plain
+    `location` text field is often more specific than `label`, e.g.
+    "Robin Williams Meadow East - Corner of JFK & Kezar Drives" instead of
+    just "Golden Gate Park, San Francisco, CA, USA". In that case combine
+    both: the specific text plus the geocoded label for city/region context
+    (which also keeps the SF filter and downstream geocoding working).
     """
     location_data = detail.get("locationData") or {}
     address = location_data.get("address") or {}
@@ -71,7 +78,20 @@ def _location(detail: dict) -> Optional[str]:
         postal = address.get("postalCode")
         tail = f"{city}, {region} {postal}".strip() if region else city
         return f"{street}, {tail}"
-    return location_data.get("label") or detail.get("location") or None
+
+    label = location_data.get("label")
+    plain = detail.get("location")
+    if plain and label and plain.strip() and plain.strip() not in label:
+        return f"{plain.strip()}, {label}"
+    return label or plain or None
+
+
+def _is_san_francisco(location: Optional[str]) -> bool:
+    # No location data at all isn't evidence the event is outside SF, so
+    # let it through rather than silently dropping it.
+    if not location:
+        return True
+    return "san francisco" in location.lower()
 
 
 def _to_event(detail: dict, source: str, title_prefix: str) -> Optional[Event]:
@@ -81,6 +101,10 @@ def _to_event(detail: dict, source: str, title_prefix: str) -> Optional[Event]:
         return None
 
     location = _location(detail)
+    if not _is_san_francisco(location):
+        logger.info(f"[{source}] skipping non-SF event {name!r} at {location!r}")
+        return None
+
     event_id = detail["eventId"]
 
     return Event(
