@@ -88,6 +88,18 @@ def _sanitize_description(text: str | None) -> Markup:
     return Markup(cleaned)
 
 
+def _gcal_link_cell(link: str | None) -> str:
+    """Render the event_snapshot's gcal_link (Calendar API's `htmlLink`) as an "Open" link.
+
+    Older snapshot docs written before this field existed won't have it until
+    the next scheduler run repopulates them, so this degrades to an empty
+    cell rather than a broken link.
+    """
+    if not link:
+        return ""
+    return f'<a href="{escape(link)}" target="_blank" rel="noopener noreferrer">Open</a>'
+
+
 @app.get("/")
 def events_table():
     """Render the current event snapshot (app/event_snapshot_store.py), rewritten fresh by every scheduler run.
@@ -126,9 +138,10 @@ def events_table():
         f"<td>{escape(d.get('cleaned_location') or '')}</td>"
         f"<td>{escape(d.get('location_type') or '')}</td>"
         f"<td>{escape(d.get('calendar') or '')}</td>"
-        f"<td>{escape(d.get('source_type') or '')}</td></tr>"
+        f"<td>{escape(d.get('source_type') or '')}</td>"
+        f"<td>{_gcal_link_cell(d.get('gcal_link'))}</td></tr>"
         for d in docs
-    ) or '<tr><td colspan="7">No upcoming events</td></tr>'
+    ) or '<tr><td colspan="10">No upcoming events</td></tr>'
 
     return f"""<!doctype html>
 <html>
@@ -154,7 +167,7 @@ def events_table():
   <thead>
     <tr><th>Event Title</th><th>Event Description</th><th>Start</th><th>End</th>
         <th>Raw Location</th><th>Cleaned Location</th><th>Location Type</th>
-        <th>Source Google Calendar</th><th>Manual / Automatic</th></tr>
+        <th>Source Google Calendar</th><th>Manual / Automatic</th><th>Calendar Link</th></tr>
   </thead>
   <tbody>
     {body_rows}

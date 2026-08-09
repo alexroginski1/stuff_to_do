@@ -84,6 +84,7 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
         cleaned_location, location_type = resolve_location(raw_location)
     return {
         "gcal_id": event["id"],
+        "gcal_link": event.get("htmlLink") or "",
         "title": event.get("summary") or "(no title)",
         "description": event.get("description") or "",
         "start_time": start_time,
