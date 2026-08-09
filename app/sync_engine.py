@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 _API_DELAY = 0.1  # seconds between Google Calendar write calls
 _TZ = ZoneInfo("America/Los_Angeles")
 _LOOKAHEAD_DAYS = 7  # how far ahead events get pushed to Google Calendar
-_SNAPSHOT_LOOKAHEAD_DAYS = 30  # how far ahead the public "/" events table looks
+_SNAPSHOT_LOOKAHEAD_DAYS = 3  # how far ahead the public "/" events table looks
 
 
 def _parse_gcal_datetime(raw: dict) -> datetime | None:

@@ -13,6 +13,8 @@ app = Flask(__name__)
 _client = firestore.Client()
 _COLLECTION = "sync_stats"
 _EVENTS_COLLECTION = "event_snapshot"
+_LOCATION_STATS_COLLECTION = "location_api_stats"
+_LOCATION_STATS_DOC = "totals"
 _TZ = ZoneInfo("America/Los_Angeles")
 
 # Event descriptions come from scraped third-party event pages and manually
@@ -108,6 +110,13 @@ def events_table():
     docs = [doc.to_dict() for doc in query.stream()]
     last_run = _format_pdt(docs[0].get("timestamp")) if docs else ""
 
+    location_stats = (
+        _client.collection(_LOCATION_STATS_COLLECTION).document(_LOCATION_STATS_DOC).get().to_dict()
+        or {}
+    )
+    places_api_calls = location_stats.get("api_calls", 0)
+    places_cache_hits = location_stats.get("cache_hits", 0)
+
     body_rows = "\n".join(
         f"<tr><td>{escape(d.get('title'))}</td>"
         f"<td>{_sanitize_description(d.get('description'))}</td>"
@@ -138,7 +147,8 @@ def events_table():
 </head>
 <body>
 <nav><a href="/">Events</a><a href="/sync-stats">Sync Stats</a></nav>
-<h1>Events (Next 30 Days)</h1>
+<p>Google Places API calls: {places_api_calls} &nbsp;|&nbsp; Saved database lookups: {places_cache_hits}</p>
+<h1>Events (Next 3 Days)</h1>
 <p>Last scheduler run: {escape(last_run) or "unknown"}</p>
 <table>
   <thead>

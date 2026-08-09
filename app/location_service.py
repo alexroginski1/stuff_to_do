@@ -6,6 +6,7 @@ import os
 import requests
 
 from app.location_cache_store import get_cached_location, save_location
+from app.location_stats_store import record_api_call, record_cache_hit
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def _within_bay_area(lat: float, lon: float) -> bool:
 
 
 def _places_text_search(query: str, api_key: str) -> dict | None:
+    record_api_call()
     try:
         resp = requests.get(
             _PLACES_TEXT_SEARCH_URL,
@@ -126,11 +128,13 @@ def resolve_location(raw_location: str | None) -> tuple[str, str]:
     if not raw:
         return NOT_FOUND, "inexact"
     if raw in _cache:
+        record_cache_hit()
         return _cache[raw]
 
     cached = get_cached_location(raw)
     if cached is not None:
         _cache[raw] = cached
+        record_cache_hit()
         return cached
 
     resolved = _resolve_via_places(raw)

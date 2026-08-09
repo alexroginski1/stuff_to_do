@@ -204,9 +204,6 @@ def _build_body(event: Event) -> dict:
     if eventbrite_price:
         parts.append(f"<b>Price: {eventbrite_price}</b>")
 
-    if raw_location:
-        parts.append(f'location provided by event source: "{raw_location}"')
-
     if event.description:
         prices = _price_lines(event.description)
         if prices:
@@ -214,6 +211,9 @@ def _build_body(event: Event) -> dict:
             parts.extend(prices)
         parts.append("")
         parts.append(event.description)
+
+    if raw_location:
+        parts.append(f'location provided by event source: "{raw_location}"')
 
     description = "\n".join(parts) + _FOOTER
     emoji = src_meta.get("emoji", "")
