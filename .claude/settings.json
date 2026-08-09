@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "WebFetch(domain:partiful.com)",
+      "Bash(python3 -c \"from config.settings import SOURCES, CALENDARS; print\\(SOURCES['sf_chess_club']\\); print\\(CALENDARS.get\\('SF Community'\\)\\)\")"
+    ]
+  }
+}
