@@ -9,7 +9,6 @@ from zoneinfo import ZoneInfo
 
 from app.calendar_service import (
     build_service,
-    delete_all_events,
     delete_all_parser_events,
     delete_duplicate_events,
     delete_event,
@@ -165,7 +164,6 @@ def _sync_source(
 def run_sync(
     num_events_per_source: int | None = None,
     delete_parser_events: bool = False,
-    delete_all_events_flag: bool = False,
     delete_all_events_before_push: bool = False,
     source: str | None = None,
     issues: List[dict] | None = None,
@@ -180,11 +178,6 @@ def run_sync(
     for calendar_name, scraper_names in CALENDARS.items():
         logger.info(f"=== Calendar: {calendar_name} ===")
         calendar_id = CALENDAR_IDS[calendar_name]
-
-        if delete_all_events_flag:
-            deleted = delete_all_events(service, calendar_id, source=source)
-            logger.info(f"[{calendar_name}] deleted all events={deleted}")
-            continue
 
         if delete_parser_events:
             deleted_keys = delete_all_parser_events(service, calendar_id, source=source)
@@ -229,7 +222,7 @@ def run_sync(
         old_deleted = delete_events_older_than(service, calendar_id, days=3)
         logger.info(f"[{calendar_name}] deleted old events={old_deleted}")
 
-    if not delete_all_events_flag and not delete_parser_events:
+    if not delete_parser_events:
         snapshot_records = []
         for calendar_name, calendar_id in CALENDAR_IDS.items():
             for event in fetch_all_events(service, calendar_id, days_ahead=_SNAPSHOT_LOOKAHEAD_DAYS):

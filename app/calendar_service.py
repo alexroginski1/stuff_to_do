@@ -140,7 +140,6 @@ def event_time_matches(existing: dict, event: Event) -> bool:
 _FOOTER = (
     "\n――――――――――\n"
     '<a href="https://alexroginski.com/stuff_to_do/">SF Stuff To Do</a>'
-    "\n\nDo not edit this event! changes will be overwritten"
 )
 
 
@@ -355,31 +354,6 @@ def delete_duplicate_events(
                 service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
                 logger.info(f"[DEDUPE] {_gcal_event_display(event)}")
                 deleted += 1
-    return deleted
-
-
-def delete_all_events(service, calendar_id: str, source: str | None = None) -> int:
-    """Delete all events (including manual) from today onwards. Optionally filter by source. Returns count deleted."""
-    deleted = 0
-    page_token = None
-    time_min = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    list_kwargs: dict = dict(
-        calendarId=calendar_id,
-        singleEvents=True,
-        timeMin=time_min,
-        maxResults=2500,
-    )
-    if source:
-        list_kwargs["privateExtendedProperty"] = f"{_SOURCE_FIELD}={source}"
-    while True:
-        resp = service.events().list(pageToken=page_token, **list_kwargs).execute()
-        for event in resp.get("items", []):
-            service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
-            logger.info(f"[DELETE] {_gcal_event_display(event)}")
-            deleted += 1
-        page_token = resp.get("nextPageToken")
-        if not page_token:
-            break
     return deleted
 
 

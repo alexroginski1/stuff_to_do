@@ -28,12 +28,6 @@ def main() -> None:
         help="Delete all parser-created Google Calendar events from today onwards",
     )
     parser.add_argument(
-        "--delete_all_events",
-        action="store_true",
-        default=False,
-        help="Delete ALL Google Calendar events from today onwards, including manually created ones",
-    )
-    parser.add_argument(
         "--delete_all_events_before_push",
         action="store_true",
         default=False,
@@ -44,7 +38,7 @@ def main() -> None:
         type=str,
         default=None,
         metavar="SOURCE",
-        help="Limit deletions to a specific source (e.g. luma_tiat). Only applies with --delete_parser_events, --delete_all_events, or --delete_all_events_before_push",
+        help="Limit deletions to a specific source (e.g. luma_tiat). Only applies with --delete_parser_events or --delete_all_events_before_push",
     )
     args = parser.parse_args()
 
@@ -55,7 +49,6 @@ def main() -> None:
         run_sync(
             num_events_per_source=args.num_events_per_source,
             delete_parser_events=args.delete_parser_events,
-            delete_all_events_flag=args.delete_all_events,
             delete_all_events_before_push=args.delete_all_events_before_push,
             source=args.source,
             issues=issues,
