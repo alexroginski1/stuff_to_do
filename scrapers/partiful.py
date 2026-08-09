@@ -43,10 +43,33 @@ def _fetch_next_data(url: str) -> dict:
 
 
 def _is_san_francisco(raw: dict) -> bool:
-    approximate_location = (
-        raw.get("locationInfo", {}).get("mapsInfo", {}).get("approximateLocation", "")
-    )
+    location_info = raw.get("locationInfo") or {}
+    if location_info.get("type") == "freeform":
+        # No mapsInfo for freeform locations (nothing was picked from Places
+        # autocomplete), so fall back to substring-matching the host's raw text.
+        return "san francisco" in (location_info.get("value") or "").strip().lower()
+
+    approximate_location = (location_info.get("mapsInfo") or {}).get("approximateLocation", "")
     return approximate_location.strip().lower().startswith("san francisco")
+
+
+def _extract_location(raw: dict) -> Optional[str]:
+    """Build a location string from Partiful's `locationInfo`.
+
+    `type` is "structured" (host picked a place from Places autocomplete —
+    address in `displayAddressLines`, venue name in `mapsInfo.name`) or
+    "freeform" (host just typed text — the whole thing lives in `value`,
+    with no address lines at all).
+    """
+    location_info = raw.get("locationInfo") or {}
+    if location_info.get("type") == "freeform":
+        return (location_info.get("value") or "").strip() or None
+
+    venue_name = (location_info.get("mapsInfo") or {}).get("name")
+    address = ", ".join(location_info.get("displayAddressLines") or []).strip()
+    if venue_name and address:
+        return f"{venue_name}, {address}"
+    return venue_name or address or None
 
 
 def _extract_raw(raw: dict) -> dict:
@@ -57,9 +80,7 @@ def _extract_raw(raw: dict) -> dict:
         "start": raw.get("startDate"),
         "end": raw.get("endDate"),
         "timezone": raw.get("timezone") or DEFAULT_TIMEZONE,
-        "location": ", ".join(
-            raw.get("locationInfo", {}).get("displayAddressLines", [])
-        ).strip() or None,
+        "location": _extract_location(raw),
         "url": f"https://partiful.com/e/{raw.get('id')}",
     }
 

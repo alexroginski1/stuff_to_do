@@ -97,6 +97,33 @@ def _parse_eventbrite_dt(s: Optional[str]) -> Optional[datetime]:
         return None
 
 
+def _eventbrite_structured_description(event_id: str) -> Optional[str]:
+    """Fall back to the structured-content endpoint for events whose classic
+    `description.text` is empty (organizers using Eventbrite's newer
+    block-based description editor don't populate that field)."""
+    try:
+        data = _eventbrite_get(f"/events/{event_id}/structured_content/")
+    except Exception as exc:
+        logger.warning(f"Failed to fetch structured content for event {event_id}: {exc}")
+        return None
+
+    texts = []
+    for module in data.get("modules", []):
+        if module.get("type") != "text":
+            continue
+        html = ((module.get("data") or {}).get("body") or {}).get("text")
+        if not html:
+            continue
+        soup = BeautifulSoup(html, "html.parser")
+        for tag in soup.find_all(["p", "li", "br", "div", "h1", "h2", "h3", "h4", "h5", "h6"]):
+            tag.insert_after("\n")
+        text = soup.get_text().strip()
+        if text:
+            texts.append(text)
+
+    return "\n\n".join(texts) or None
+
+
 def _parse_eventbrite_event(e: dict, source: str) -> Optional["Event"]:
     from app.event_model import Event
 
@@ -118,12 +145,16 @@ def _parse_eventbrite_event(e: dict, source: str) -> Optional["Event"]:
     ]
     location = ", ".join([p for p in location_parts if p]) or None
 
+    description = (e.get("description") or {}).get("text")
+    if not description and e.get("id"):
+        description = _eventbrite_structured_description(e["id"])
+
     return Event(
         name=name.strip(),
         start_time=start,
         end_time=end,
         location=location,
-        description=(e.get("description") or {}).get("text"),
+        description=description,
         source_url=e.get("url"),
         source=source,
     )
@@ -137,7 +168,7 @@ def fetch_eventbrite_organizer_events(
     for page in range(1, max_pages + 1):
         try:
             data = _eventbrite_get(
-                f"/organizers/{organizer_id}/events/", {"page": page, "expand": "venue"}
+                f"/organizers/{organizer_id}/events/", {"page": page, "expand": "venue,description"}
             )
         except Exception as exc:
             logger.warning(f"[{source}] failed to fetch Eventbrite page {page}: {exc}")
