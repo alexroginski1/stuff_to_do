@@ -90,7 +90,9 @@ def events_table():
         f"<td>{_sanitize_description(d.get('description'))}</td>"
         f"<td>{_format_pdt(d.get('start_time'))}</td>"
         f"<td>{_format_pdt(d.get('end_time'))}</td>"
-        f"<td>{escape(d.get('location') or '')}</td>"
+        f"<td>{escape(d.get('raw_location') or '')}</td>"
+        f"<td>{escape(d.get('cleaned_location') or '')}</td>"
+        f"<td>{escape(d.get('location_type') or '')}</td>"
         f"<td>{escape(d.get('calendar') or '')}</td>"
         f"<td>{escape(d.get('source_type') or '')}</td></tr>"
         for d in (doc.to_dict() for doc in query.stream())
@@ -117,7 +119,8 @@ def events_table():
 <table>
   <thead>
     <tr><th>Event Title</th><th>Event Description</th><th>Start</th><th>End</th>
-        <th>Location</th><th>Source Google Calendar</th><th>Manual / Automatic</th></tr>
+        <th>Raw Location</th><th>Cleaned Location</th><th>Location Type</th>
+        <th>Source Google Calendar</th><th>Manual / Automatic</th></tr>
   </thead>
   <tbody>
     {body_rows}

@@ -23,6 +23,7 @@ from app.calendar_service import (
 
 from app.event_model import Event
 from app.event_snapshot_store import write_snapshot
+from app.location_service import resolve_location
 from app.notifier import format_parsing_issues_email, send_error_email
 from app.stats_store import record_stats
 from app.utils import emit_metric
@@ -58,13 +59,17 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
         return None
     end_time = _parse_gcal_datetime(event.get("end", {})) or (start_time + timedelta(hours=1))
     is_automatic = event.get("extendedProperties", {}).get("private", {}).get("created_by") == "event_parser"
+    raw_location = event.get("location") or ""
+    cleaned_location, location_type = resolve_location(raw_location)
     return {
         "gcal_id": event["id"],
         "title": event.get("summary") or "(no title)",
         "description": event.get("description") or "",
         "start_time": start_time,
         "end_time": end_time,
-        "location": event.get("location") or "",
+        "raw_location": raw_location,
+        "cleaned_location": cleaned_location,
+        "location_type": location_type,
         "calendar": calendar_name,
         "source_type": "automatic" if is_automatic else "manual",
     }

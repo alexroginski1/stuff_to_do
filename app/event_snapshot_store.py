@@ -23,8 +23,9 @@ def _get_client() -> firestore.Client:
 def write_snapshot(run_id: str, run_started_at: datetime, records: List[dict]) -> None:
     """Replace the event_snapshot collection with the given records.
 
-    Each record is a dict with title/description/start_time/end_time/location/
-    calendar/source_type/gcal_id, built from a live Calendar API event
+    Each record is a dict with title/description/start_time/end_time/
+    raw_location/cleaned_location/location_type/calendar/source_type/gcal_id,
+    built from a live Calendar API event
     (app.calendar_service.fetch_all_events) so both parser-created and
     manually-added events are captured. Runs once at the end of every
     scheduler run, so the public "/" page always reflects the calendar's
@@ -52,7 +53,9 @@ def write_snapshot(run_id: str, run_started_at: datetime, records: List[dict]) -
                     "description": record["description"],
                     "start_time": record["start_time"],
                     "end_time": record["end_time"],
-                    "location": record["location"],
+                    "raw_location": record["raw_location"],
+                    "cleaned_location": record["cleaned_location"],
+                    "location_type": record["location_type"],
                     "calendar": record["calendar"],
                     "source_type": record["source_type"],
                 })
