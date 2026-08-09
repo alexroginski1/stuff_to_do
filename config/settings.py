@@ -1,5 +1,10 @@
 from __future__ import annotations
-SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+# Events-only scope: every call site (app/calendar_service.py) only ever uses
+# service.events(), never calendarList()/acl()/calendars(), so this is
+# deliberately narrower than the full "calendar" scope, which would also let
+# the credential delete calendars outright or change sharing/ACLs.
+SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
 DEFAULT_TIMEZONE = "America/Los_Angeles"
 

@@ -5,7 +5,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import bleach
-from flask import Flask, request
+from flask import Flask, abort, request
 from google.cloud import firestore
 from markupsafe import Markup, escape
 
@@ -40,6 +40,23 @@ _SOURCE_LABELS = {
     "midnight_runners": "Midnight Runners SF",
     "november_project": "November Project SF",
 }
+
+
+def _parse_limit(default: int, max_value: int) -> int:
+    """Parse the `limit` query param, rejecting anything non-numeric or out of range.
+
+    A bare int(...) on unvalidated input raises on non-numeric values (e.g.
+    ?limit=x) and silently accepts negatives, which Firestore's .limit()
+    rejects with its own error — both surfaced as an unhandled 500.
+    """
+    raw = request.args.get("limit", default)
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        abort(400, description="limit must be an integer")
+    if value < 1:
+        abort(400, description="limit must be positive")
+    return min(value, max_value)
 
 
 def _format_pdt(dt) -> str:
@@ -77,7 +94,7 @@ def events_table():
     manual or parser-added — it's read straight from Firestore, so loading
     this page never calls the Google Calendar API.
     """
-    limit = min(int(request.args.get("limit", 2000)), 5000)
+    limit = _parse_limit(default=2000, max_value=5000)
 
     query = (
         _client.collection(_EVENTS_COLLECTION)
@@ -140,7 +157,7 @@ def events_table():
 @app.get("/sync-stats")
 def stats_table():
     """Render every scheduler run, across all calendars/sources, as one HTML table (newest first)."""
-    limit = min(int(request.args.get("limit", 200)), 1000)
+    limit = _parse_limit(default=200, max_value=1000)
 
     query = (
         _client.collection(_COLLECTION)

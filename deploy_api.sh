@@ -24,7 +24,15 @@ PROJECT_ID="${1:-${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT or pass it as 
 REGION="${REGION:-us-west1}"
 SERVICE_NAME="stuff-to-do-stats-api"
 IMAGE="gcr.io/$PROJECT_ID/$SERVICE_NAME"
-JOB_SA="stuff-to-do-runner@$PROJECT_ID.iam.gserviceaccount.com"
+# Dedicated, minimally-privileged SA for this public/unauthenticated service —
+# deliberately NOT the stuff-to-do-runner SA that deploy.sh sets up for the
+# sync job, which holds Secret Manager access (Eventbrite token, Gmail app
+# password, Google Places API key) and full Firestore read/write. This
+# service only ever reads two Firestore collections, so it gets read-only
+# Firestore access and nothing else — a bug here can't leak those secrets or
+# let anyone tamper with synced data.
+WEBAPI_SA_ID="stuff-to-do-webapi"
+WEBAPI_SA="$WEBAPI_SA_ID@$PROJECT_ID.iam.gserviceaccount.com"
 
 echo "==> Project: $PROJECT_ID"
 echo "==> Region:  $REGION"
@@ -39,13 +47,24 @@ gcloud services enable \
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+echo "==> Setting up webapi service account..."
+gcloud iam service-accounts create "$WEBAPI_SA_ID" \
+  --display-name="Stuff To Do Stats API" \
+  --project "$PROJECT_ID" 2>/dev/null || true
+
+echo "==> Granting $WEBAPI_SA read-only Firestore access..."
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$WEBAPI_SA" \
+  --role="roles/datastore.viewer" \
+  --condition=None >/dev/null
+
 echo "==> Building and pushing image..."
 gcloud builds submit --tag "$IMAGE" --project "$PROJECT_ID" "$SCRIPT_DIR/webapi"
 
-echo "==> Deploying Cloud Run service (public, unauthenticated) as $JOB_SA..."
+echo "==> Deploying Cloud Run service (public, unauthenticated) as $WEBAPI_SA..."
 gcloud run deploy "$SERVICE_NAME" \
   --image "$IMAGE" \
-  --service-account "$JOB_SA" \
+  --service-account "$WEBAPI_SA" \
   --allow-unauthenticated \
   --region "$REGION" \
   --project "$PROJECT_ID"
