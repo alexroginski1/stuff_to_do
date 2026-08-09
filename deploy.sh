@@ -91,6 +91,19 @@ GMAIL_SECRET_NAME="gmail-app-password"
 GMAIL_SENDER_ADDRESS="roginskialexr@gmail.com"
 ALERT_EMAIL_TO="roginskialexr@gmail.com"
 
+# ── Google Places API key secret ──────────────────────────────────────────────
+# app/location_service.py resolves each distinct raw scraped location to a
+# full address via the Google Places API (Text Search) once, then caches the
+# result in Firestore (location_cache collection, see
+# app/location_cache_store.py) so every later run looks it up there instead
+# of calling the API again. Create the secret once with:
+#   printf '%s' 'YOUR_PLACES_API_KEY' | gcloud secrets create google-places-api-key \
+#     --data-file=- --project "$PROJECT_ID"
+# and update it later with:
+#   printf '%s' 'NEW_KEY' | gcloud secrets versions add google-places-api-key \
+#     --data-file=- --project "$PROJECT_ID"
+PLACES_SECRET_NAME="google-places-api-key"
+
 # ── Build and push container image ───────────────────────────────────────────
 echo "==> Building and pushing image..."
 gcloud builds submit --tag "$IMAGE" --project "$PROJECT_ID" "$SCRIPT_DIR"
@@ -114,6 +127,12 @@ gcloud secrets add-iam-policy-binding "$GMAIL_SECRET_NAME" \
   --role="roles/secretmanager.secretAccessor" \
   --project "$PROJECT_ID"
 
+echo "==> Granting $JOB_SA access to secret $PLACES_SECRET_NAME..."
+gcloud secrets add-iam-policy-binding "$PLACES_SECRET_NAME" \
+  --member="serviceAccount:$JOB_SA" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project "$PROJECT_ID"
+
 # Let the job's service account write run stats to Firestore.
 echo "==> Granting $JOB_SA Firestore write access..."
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
@@ -133,7 +152,7 @@ gcloud run jobs "$VERB" "$JOB_NAME" \
   --image "$IMAGE" \
   --service-account "$JOB_SA" \
   --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GMAIL_SENDER_ADDRESS=$GMAIL_SENDER_ADDRESS,ALERT_EMAIL_TO=$ALERT_EMAIL_TO" \
-  --set-secrets "EVENTBRITE_API_TOKEN=$SECRET_NAME:latest,GMAIL_APP_PASSWORD=$GMAIL_SECRET_NAME:latest" \
+  --set-secrets "EVENTBRITE_API_TOKEN=$SECRET_NAME:latest,GMAIL_APP_PASSWORD=$GMAIL_SECRET_NAME:latest,GOOGLE_PLACES_API_KEY=$PLACES_SECRET_NAME:latest" \
   --memory 512Mi \
   --task-timeout 600 \
   --region "$REGION" \

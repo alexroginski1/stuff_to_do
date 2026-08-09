@@ -208,6 +208,7 @@ def _build_body(event: Event) -> dict:
                 _SOURCE_FIELD: event.source,
                 "created_by": "event_parser",
                 "parser_version": "v1",
+                "location_verified": "true" if event.location_verified else "false",
             }
         },
     }

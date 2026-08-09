@@ -1,143 +1,126 @@
 from __future__ import annotations
 
 import logging
+import os
 
-from geopy.extra.rate_limiter import RateLimiter
-from geopy.geocoders import Nominatim
+import requests
+
+from app.location_cache_store import get_cached_location, save_location
 
 logger = logging.getLogger(__name__)
 
 NOT_FOUND = "Location Not Found"
 
-_USER_AGENT = "stuff-to-do-sf-events-sync"
-# [(south-west), (north-east)] — biases Nominatim toward SF. Only used to bias
-# ranking (never with `bounded=True` beyond the first attempt below), since a
-# hard bound excludes events that are genuinely just outside SF proper (e.g.
-# Berkeley, Oakland, Albany, Vallejo).
-_SF_VIEWBOX = [(37.708, -122.535), (37.834, -122.355)]
+_PLACES_TEXT_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+# Biases (never restricts) results toward SF so Places' ranking prefers "the
+# venue in San Francisco" over a same-named venue elsewhere.
+_SF_BIAS_LOCATION = "37.7749,-122.4194"
+_SF_BIAS_RADIUS_METERS = 50_000
 
-# Sanity bound for fallback lookups that run without `bounded=True` (see
-# `_within_bay_area` below). Nominatim's free-text search can otherwise
-# return an unrelated same-named place anywhere on Earth — e.g. "5 Olive
-# Gallery" resolving to a street in Los Angeles, or "Union Square area"
-# resolving to a plaza in Romania — which is worse than NOT_FOUND because it
-# looks authoritative. Loosely covers the greater SF Bay Area.
+# Sanity bound for accepting a Places result — the bias above only affects
+# ranking, so free-text search can still return an unrelated same-named place
+# anywhere on Earth, which is worse than NOT_FOUND because it looks
+# authoritative. Loosely covers the greater SF Bay Area.
 _BAY_AREA_BOUNDS = {"lat": (36.8, 38.9), "lon": (-123.3, -121.3)}
 
-# Nominatim `addresstype` values that describe an area rather than a single
-# building/venue/address — these are the "neighborhood name" case.
-_INEXACT_ADDRESS_TYPES = {
-    "neighbourhood", "suburb", "quarter", "city_district", "borough",
-    "district", "residential", "village", "town", "city", "county",
-    "state", "hamlet", "region",
+# Google Places `types` values that describe an area rather than a single
+# building/venue/address — the "neighborhood name" case.
+_AREA_TYPES = {
+    "locality", "sublocality", "sublocality_level_1", "sublocality_level_2",
+    "neighborhood", "administrative_area_level_1", "administrative_area_level_2",
+    "administrative_area_level_3", "administrative_area_level_4",
+    "administrative_area_level_5", "country", "postal_code", "postal_town",
 }
 
-# `address` dict keys (from addressdetails=True) that hold an area name
-# rather than a specific building/venue, checked in priority order.
-_AREA_ADDRESS_FIELDS = [
-    "neighbourhood", "suburb", "quarter", "city_district", "borough",
-    "village", "town", "hamlet",
-]
-
-_geolocator = Nominatim(user_agent=_USER_AGENT, timeout=10)
-# Nominatim's usage policy caps free lookups at ~1/sec; this only matters
-# within a single sync run since each Cloud Run Job invocation starts fresh.
-_geocode = RateLimiter(_geolocator.geocode, min_delay_seconds=1)
-
+# Cache of this run's resolutions, keyed by raw string, layered in front of
+# the persistent Firestore cache to avoid a redundant DB read for a venue
+# string that repeats across many events in the same run.
 _cache: dict[str, tuple[str, str]] = {}
 
 
-def _matches_area_field(raw: str, address: dict) -> bool:
-    """True if any `_AREA_ADDRESS_FIELDS` entry overlaps `raw`.
-
-    Nominatim's free-text search ranks a specifically-named POI ("Mission", a
-    sports shop) above the neighborhood boundary it sits in when the query is
-    e.g. "Mission District" — the shop isn't what the scraped site meant, but
-    its address still carries "suburb": "Mission", which does overlap the
-    query. Checking that address hierarchy directly catches the neighborhood
-    intent even when the top-ranked match itself is a specific venue.
-    """
-    raw_lower = raw.lower()
-    return any(
-        (value := address.get(field)) and value.lower() in raw_lower
-        for field in _AREA_ADDRESS_FIELDS
-    )
-
-
-def _within_bay_area(result) -> bool:
-    try:
-        lat, lon = float(result.raw["lat"]), float(result.raw["lon"])
-    except (KeyError, TypeError, ValueError):
-        return False
+def _within_bay_area(lat: float, lon: float) -> bool:
     lat_lo, lat_hi = _BAY_AREA_BOUNDS["lat"]
     lon_lo, lon_hi = _BAY_AREA_BOUNDS["lon"]
     return lat_lo <= lat <= lat_hi and lon_lo <= lon <= lon_hi
 
 
-def _geocode_query(query: str, *, bounded: bool):
+def _places_text_search(query: str, api_key: str) -> dict | None:
     try:
-        return _geocode(
-            query, addressdetails=True, viewbox=_SF_VIEWBOX, bounded=bounded, exactly_one=True
+        resp = requests.get(
+            _PLACES_TEXT_SEARCH_URL,
+            params={
+                "query": query,
+                "location": _SF_BIAS_LOCATION,
+                "radius": _SF_BIAS_RADIUS_METERS,
+                "key": api_key,
+            },
+            timeout=10,
         )
+        resp.raise_for_status()
+        data = resp.json()
     except Exception as exc:
-        logger.warning(f"Geocoding lookup failed for {query!r}: {exc}")
+        logger.warning(f"Google Places lookup failed for {query!r}: {exc}")
         return None
 
+    status = data.get("status")
+    if status != "OK":
+        if status != "ZERO_RESULTS":
+            logger.warning(
+                f"Google Places lookup for {query!r} returned status={status}: "
+                f"{data.get('error_message')}"
+            )
+        return None
 
-def _candidate_queries(raw: str):
-    """Yield progressively looser rewrites of `raw` to retry against Nominatim.
-
-    Scrapers hand us free-text venue strings in wildly different shapes, and
-    Nominatim's free-text search is surprisingly brittle about it — e.g. it
-    fails on "Ruth Asawa Lanier, Inc. Gallery, 1275 Minnesota Street, San
-    Francisco, California, 94107" (venue name prefixed to a full address) but
-    succeeds the moment the venue name is dropped, leaving just "1275
-    Minnesota Street, San Francisco, California, 94107". So: try the raw
-    string first, then repeatedly drop the leading comma-separated segment,
-    and finally fall back to the leading segment alone (covers cases like
-    "Vesuvio Cafe, Jack Kerouac Alley" where the *tail* is what confuses it).
-    """
-    yield raw
-    parts = [p.strip() for p in raw.split(",") if p.strip()]
-    while len(parts) > 2:
-        parts = parts[1:]
-        yield ", ".join(parts)
-    if len(parts) > 1:
-        yield parts[0]
+    results = data.get("results") or []
+    return results[0] if results else None
 
 
-def _geocode_with_fallbacks(raw: str):
-    """Try `raw`, then looser rewrites of it, each first bounded to SF proper
-    and then — only if that fails — unbounded but sanity-checked against the
-    wider Bay Area. The bounded attempt runs first and alone handles the
-    common case so ranking/behavior for it is unchanged; the unbounded retry
-    only kicks in to recover venues genuinely just outside the SF box (e.g.
-    Berkeley, Oakland, Albany, Vallejo), and the bounds check keeps it from
-    accepting a same-named place on the wrong continent.
-    """
-    for query in _candidate_queries(raw):
-        result = _geocode_query(query, bounded=True)
-        if result is None:
-            candidate = _geocode_query(query, bounded=False)
-            if candidate is not None and _within_bay_area(candidate):
-                result = candidate
-        if result is not None:
-            return result
-    return None
+def _resolve_via_places(raw: str) -> tuple[str, str]:
+    api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+    if not api_key:
+        logger.error("GOOGLE_PLACES_API_KEY not configured; skipping location resolution")
+        return NOT_FOUND, "inexact"
+
+    result = _places_text_search(raw, api_key)
+    if result is None:
+        return NOT_FOUND, "inexact"
+
+    location = (result.get("geometry") or {}).get("location") or {}
+    try:
+        lat, lon = float(location["lat"]), float(location["lng"])
+    except (KeyError, TypeError, ValueError):
+        return NOT_FOUND, "inexact"
+    if not _within_bay_area(lat, lon):
+        return NOT_FOUND, "inexact"
+
+    formatted_address = result.get("formatted_address")
+    if not formatted_address:
+        return NOT_FOUND, "inexact"
+
+    types = set(result.get("types") or [])
+    if types & _AREA_TYPES:
+        return raw, "inexact"
+    return formatted_address, "exact"
 
 
 def resolve_location(raw_location: str | None) -> tuple[str, str]:
-    """Validate `raw_location` against OpenStreetMap/Nominatim and classify its precision.
+    """Resolve `raw_location` to a full address via Google Places, backed by a persistent cache.
 
     Returns (cleaned_location, location_type). `location_type` is "inexact"
-    when the input names an area (neighborhood, suburb, city, etc.) rather
-    than a specific address/building/venue, or when nothing resolves — in
-    which case cleaned_location is NOT_FOUND. When inexact but resolved,
-    cleaned_location is `raw_location` itself (e.g. "Mission District" stays
-    "Mission District", not Nominatim's own name for that area). Otherwise
-    it's "exact" and cleaned_location is the full resolved address. Results
-    are cached per raw string for the life of the process, since the same
-    venue string repeats across many events in a run.
+    when the input names an area (neighborhood, city, etc.) rather than a
+    specific address/venue, or when nothing resolves — in which case
+    cleaned_location is NOT_FOUND. When inexact but resolved, cleaned_location
+    is `raw_location` itself (e.g. "Mission District" stays "Mission
+    District", not whatever place Google's search happened to rank first).
+    Otherwise it's "exact" and cleaned_location is the full address Places
+    returned.
+
+    Every distinct raw string is only ever sent to the Places API once: a
+    successful resolution is saved to Firestore (location_cache_store) so
+    every later lookup for that same string — this run or any future one —
+    is a database read instead of a billed API call. NOT_FOUND results are
+    deliberately not persisted, so a transient failure (or a not-yet-set API
+    key) doesn't permanently poison the cache; they're retried next run.
     """
     raw = (raw_location or "").strip()
     if not raw:
@@ -145,18 +128,13 @@ def resolve_location(raw_location: str | None) -> tuple[str, str]:
     if raw in _cache:
         return _cache[raw]
 
-    result = _geocode_with_fallbacks(raw)
+    cached = get_cached_location(raw)
+    if cached is not None:
+        _cache[raw] = cached
+        return cached
 
-    if result is None:
-        resolved = (NOT_FOUND, "inexact")
-    else:
-        address = result.raw.get("address", {})
-        addresstype = result.raw.get("addresstype")
-
-        if _matches_area_field(raw, address) or addresstype in _INEXACT_ADDRESS_TYPES:
-            resolved = (raw, "inexact")
-        else:
-            resolved = (result.address, "exact")
-
+    resolved = _resolve_via_places(raw)
     _cache[raw] = resolved
+    if resolved[0] != NOT_FOUND:
+        save_location(raw, resolved[0], resolved[1])
     return resolved

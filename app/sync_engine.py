@@ -57,9 +57,16 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
     if start_time is None:
         return None
     end_time = _parse_gcal_datetime(event.get("end", {})) or (start_time + timedelta(hours=1))
-    is_automatic = event.get("extendedProperties", {}).get("private", {}).get("created_by") == "event_parser"
+    private_props = event.get("extendedProperties", {}).get("private", {})
+    is_automatic = private_props.get("created_by") == "event_parser"
     raw_location = event.get("location") or ""
-    cleaned_location, location_type = resolve_location(raw_location)
+    if private_props.get("location_verified") == "true":
+        # Scraper already hardcoded a known-correct full address for this
+        # event (see Event.location_verified) — no need to spend a Places
+        # API call/cache entry re-resolving it.
+        cleaned_location, location_type = raw_location, "exact"
+    else:
+        cleaned_location, location_type = resolve_location(raw_location)
     return {
         "gcal_id": event["id"],
         "title": event.get("summary") or "(no title)",

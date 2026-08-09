@@ -18,4 +18,5 @@ def fetch_events() -> List[Event]:
     events = fetch_luma_events(_URL, _SOURCE)
     for event in events:
         event.location = _ADDRESS
+        event.location_verified = True
     return events

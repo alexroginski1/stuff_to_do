@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
@@ -15,6 +15,11 @@ class Event:
     description: Optional[str]
     source_url: str
     source: str
+    # True when a scraper has hardcoded `location` to a known-correct full
+    # address (e.g. luma_the_commons.py), bypassing Google Places entirely —
+    # lets downstream location resolution skip a pointless API call/cache
+    # write for a value that's already exact.
+    location_verified: bool = field(default=False)
 
     @property
     def unique_key(self) -> str:
