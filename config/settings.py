@@ -312,6 +312,13 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Community",
         "enabled": True,
     },
+    "board_games_egl": {
+        "label": "Board Games with EGL",
+        "emoji": "🎲",
+        "display_url": "https://www.heylo.com/g/12979145-cf38-42c9-b755-e3a27b458bf9",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
 }
 
 # Maps Google Calendar display name → list of scraper module names (under scrapers/).
