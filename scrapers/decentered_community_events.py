@@ -16,6 +16,18 @@ logger = logging.getLogger(__name__)
 _SOURCE = Path(__file__).stem
 _URL = "https://events.decentered.org/v1/events"
 _TZ = ZoneInfo("America/Los_Angeles")
+# Decentered's community calendar aggregates events submitted by members
+# across many cities; only push ones local to our coverage area.
+_ALLOWED_CITIES = ("san francisco", "marina", "oakland")
+
+
+def _is_allowed_city(location: Optional[str]) -> bool:
+    # No location data at all isn't evidence the event is out of area, so
+    # let it through rather than silently dropping it.
+    if not location:
+        return True
+    location_lower = location.lower()
+    return any(city in location_lower for city in _ALLOWED_CITIES)
 
 
 def _parse_dt(date_str: str, time_obj: dict) -> Optional[datetime]:
@@ -69,6 +81,8 @@ def _parse_events(payload: dict) -> List[Event]:
         end_dt = _parse_dt(date, end_obj)
 
         location = e.get("address") or e.get("location")
+        if not _is_allowed_city(location):
+            continue
 
         events.append(
             Event(

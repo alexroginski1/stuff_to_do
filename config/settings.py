@@ -20,7 +20,7 @@ CALENDAR_LINKS = {
     "SF Tech": "45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15@group.calendar.google.com",
     "SF Bars": "9c8685a68b697409a5bffa6ce3011651930fa18572dad9ef435215753a43de22@group.calendar.google.com",
     "SF Dancing": "704367c0fe7ec0383a79ab3bd6a4388d8c867642120862ffa11191fdb27e407f@group.calendar.google.com",
-    "SF Sports/Exercise": "2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f@group.calendar.google.com",
+    "SF Exercise": "2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f@group.calendar.google.com",
 }
 
 
@@ -235,35 +235,35 @@ SOURCES: dict[str, dict] = {
         "label": "Fat Boys Run Club",
         "emoji": "🏃",
         "display_url": "https://www.heylo.com/g/75ea182e-9df2-4b4d-bc78-a2e299384993",
-        "calendar": "SF Sports/Exercise",
+        "calendar": "SF Exercise",
         "enabled": True,
     },
     "midnight_runners": {
         "label": "Midnight Runners SF",
         "emoji": "🏃",
         "display_url": "https://www.heylo.com/g/-LmBjhGfivWBeac11cNQ",
-        "calendar": "SF Sports/Exercise",
+        "calendar": "SF Exercise",
         "enabled": True,
     },
     "november_project": {
         "label": "November Project SF",
         "emoji": "🏃",
         "display_url": "https://www.heylo.com/g/48f5e552-13d3-4987-bd0b-66e8855dfd46",
-        "calendar": "SF Sports/Exercise",
+        "calendar": "SF Exercise",
         "enabled": True,
     },
     "page_street_fit": {
         "label": "Page Street Fit",
         "emoji": "🏃",
         "display_url": "https://www.heylo.com/g/6e3b8574-b970-4713-995a-1c641daeca26",
-        "calendar": "SF Sports/Exercise",
+        "calendar": "SF Exercise",
         "enabled": True,
     },
     "sf_pickup_volleyball": {
         "label": "SF Pickup Volleyball",
         "emoji": "🏐",
         "display_url": "https://www.heylo.com/g/-LsD1YBcDKPOcrsMQ-mT",
-        "calendar": "SF Sports/Exercise",
+        "calendar": "SF Exercise",
         "enabled": True,
     },
     "sf_beach_volleyball": {
@@ -272,14 +272,14 @@ SOURCES: dict[str, dict] = {
         "location_link": "https://www.google.com/maps/search/?api=1&query=Ocean+Beach%2C+San+Francisco%2C+CA",
         "emoji": "🏐",
         "display_url": "https://www.heylo.com/g/7b9b7d08-d381-4280-bbc7-612795d40302",
-        "calendar": "SF Sports/Exercise",
+        "calendar": "SF Exercise",
         "enabled": True,
     },
     "nob_hill_run_club": {
         "label": "Nob Hill Run Club",
         "emoji": "🏃",
         "display_url": "https://partiful.com/u/gaH33LxCrvQo0r1F2Y5M",
-        "calendar": "SF Sports/Exercise",
+        "calendar": "SF Exercise",
         "enabled": True,
     },
     "gathersf": {
@@ -317,6 +317,15 @@ SOURCES: dict[str, dict] = {
         "emoji": "🎲",
         "display_url": "https://www.heylo.com/g/12979145-cf38-42c9-b755-e3a27b458bf9",
         "calendar": "SF Community",
+        "enabled": True,
+    },
+    "the_web_sf": {
+        "label": "The Web SF",
+        "location": "Lower Haight",
+        "location_link": "https://maps.app.goo.gl/sD1asWWUYL11KqmEA",
+        "emoji": "🕸️",
+        "display_url": "https://www.heylo.com/g/1fda3590-3f27-4ee0-afc1-a63473b8a200",
+        "calendar": "SF Arts/Culture",
         "enabled": True,
     },
 }
