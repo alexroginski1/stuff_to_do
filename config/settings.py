@@ -174,6 +174,12 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Arts/Culture",
         "enabled": True,
     },
+    "sf_bar_guide": {
+        "label": "SF Bar Guide",
+        "display_url": "https://www.sfbarguide.com/",
+        "calendar": "SF Bars",
+        "enabled": True,
+    },
     "madrone_art_bar": {
         "label": "Madrone Art Bar",
         "location": "Alamo Square",

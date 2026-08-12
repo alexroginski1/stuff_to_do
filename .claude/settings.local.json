@@ -21,7 +21,15 @@
       "Bash(python3 -m py_compile scrapers/decentered_community_events.py)",
       "WebFetch(domain:www.meetup.com)",
       "Bash(curl -sL \"https://www.meetup.com/fitnesssf/\" -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\")",
-      "Bash(curl -sL \"https://www.meetup.com/fitnesssf/\" -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\" -o /tmp/fitnesssf.html)"
+      "Bash(curl -sL \"https://www.meetup.com/fitnesssf/\" -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\" -o /tmp/fitnesssf.html)",
+      "Bash(curl -s -A \"Mozilla/5.0\" https://www.sfbarguide.com/ -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/9701133d-af62-426c-baf9-7da7a1902273/scratchpad/sfbarguide.html -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" https://www.sfbarguide.com/trivia -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/9701133d-af62-426c-baf9-7da7a1902273/scratchpad/trivia.html -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" https://www.sfbarguide.com/sitemap.xml)",
+      "Bash(curl -s -A Mozilla/5.0 https://www.sfbarguide.com/event-type/trivia -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/9701133d-af62-426c-baf9-7da7a1902273/scratchpad/trivia.html -w '%{http_code}\\\\n')",
+      "Bash(curl -s -A Mozilla/5.0 https://www.sfbarguide.com/bar/spark-social -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/9701133d-af62-426c-baf9-7da7a1902273/scratchpad/bar.html -w '%{http_code}\\\\n')",
+      "Bash(python3)",
+      "Bash(python3 -m py_compile scrapers/sf_bar_guide.py config/settings.py)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('config/settings.py'\\).read\\(\\)\\)\")"
     ]
   }
 }
