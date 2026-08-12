@@ -18,7 +18,10 @@
       "WebFetch(domain:events.decentered.org)",
       "Bash(curl -s \"https://aegwebprod.blob.core.windows.net/json/data/data_rv1/541/search_queries.json\")",
       "Bash(curl -s \"https://cdn.dnalounge.com/calendar/dnalounge.ics\")",
-      "Bash(python3 -m py_compile scrapers/decentered_community_events.py)"
+      "Bash(python3 -m py_compile scrapers/decentered_community_events.py)",
+      "WebFetch(domain:www.meetup.com)",
+      "Bash(curl -sL \"https://www.meetup.com/fitnesssf/\" -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\")",
+      "Bash(curl -sL \"https://www.meetup.com/fitnesssf/\" -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\" -o /tmp/fitnesssf.html)"
     ]
   }
 }
