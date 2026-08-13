@@ -1,0 +1,8 @@
+# Builds the webapi image from the repo root so config/settings.py (the
+# single source of truth for scraper source labels) can be copied into the
+# image alongside webapi/. Submitted from the repo root by deploy_api.sh —
+# see webapi/Dockerfile, which expects that build context.
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["build", "-t", "${_IMAGE}", "-f", "webapi/Dockerfile", "."]
+images: ["${_IMAGE}"]

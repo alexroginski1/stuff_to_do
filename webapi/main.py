@@ -9,6 +9,8 @@ from flask import Flask, abort, request
 from google.cloud import firestore
 from markupsafe import Markup, escape
 
+from config.settings import SOURCES
+
 app = Flask(__name__)
 _client = firestore.Client()
 _COLLECTION = "sync_stats"
@@ -25,23 +27,16 @@ _TZ = ZoneInfo("America/Los_Angeles")
 _DESCRIPTION_ALLOWED_TAGS = ["a", "b", "i", "strong", "em", "u", "br", "p", "ul", "ol", "li"]
 _DESCRIPTION_ALLOWED_ATTRS = {"a": ["href"]}
 
-# Source key -> display label, kept in sync with SOURCES in config/settings.py.
-_SOURCE_LABELS = {
-    "the_faight": "The Faight",
-    "decentered_featured_events": "Decentered Featured Events",
-    "funcheap": "SF Funcheap",
-    "luma": "Luma",
-    "decentered_community_events": "Decentered Community Events",
-    "mannys": "Manny's: Community, Politics, and Culture",
-    "the_sf_nook": "The SF Nook: SF Event Space",
-    "luma_the_commons": "The Commons: Third Space",
-    "luma_future_of_us": "Future of Us",
-    "the_sf_contemplarium": "The SF Contemplarium",
-    "luma_tiat": "TIAT Art and Tech",
-    "partiful": "Partiful",
-    "midnight_runners": "Midnight Runners SF",
-    "november_project": "November Project SF",
-}
+
+def _source_label(key: str | None) -> str:
+    """Look up a scraper source key's display label from config.settings.SOURCES.
+
+    Falls back to the raw key for manual events (no source key at all) or a
+    key not found in SOURCES (e.g. a scraper that's since been removed).
+    """
+    if not key:
+        return ""
+    return SOURCES.get(key, {}).get("label", key)
 
 
 def _parse_limit(default: int, max_value: int) -> int:
@@ -139,9 +134,10 @@ def events_table():
         f"<td>{escape(d.get('location_type') or '')}</td>"
         f"<td>{escape(d.get('calendar') or '')}</td>"
         f"<td>{escape(d.get('source_type') or '')}</td>"
+        f"<td>{escape(_source_label(d.get('source')))}</td>"
         f"<td>{_gcal_link_cell(d.get('gcal_link'))}</td></tr>"
         for d in docs
-    ) or '<tr><td colspan="10">No upcoming events</td></tr>'
+    ) or '<tr><td colspan="11">No upcoming events</td></tr>'
 
     return f"""<!doctype html>
 <html>
@@ -167,7 +163,8 @@ def events_table():
   <thead>
     <tr><th>Event Title</th><th>Event Description</th><th>Start</th><th>End</th>
         <th>Raw Location</th><th>Cleaned Location</th><th>Location Type</th>
-        <th>Source Google Calendar</th><th>Manual / Automatic</th><th>Calendar Link</th></tr>
+        <th>Source Google Calendar</th><th>Manual / Automatic</th><th>Event Source</th>
+        <th>Calendar Link</th></tr>
   </thead>
   <tbody>
     {body_rows}
@@ -192,7 +189,7 @@ def stats_table():
         (
             _format_pdt(d.get("timestamp")),
             d.get("calendar"),
-            _SOURCE_LABELS.get(d.get("source"), d.get("source")),
+            _source_label(d.get("source")),
             d.get("inserted"),
             d.get("deleted"),
             d.get("skipped"),

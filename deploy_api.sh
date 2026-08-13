@@ -59,7 +59,10 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --condition=None >/dev/null
 
 echo "==> Building and pushing image..."
-gcloud builds submit --tag "$IMAGE" --project "$PROJECT_ID" "$SCRIPT_DIR/webapi"
+# Submitted from the repo root (not webapi/) so the build can pull in
+# config/settings.py — see webapi/Dockerfile and webapi/cloudbuild.yaml.
+gcloud builds submit --config "$SCRIPT_DIR/webapi/cloudbuild.yaml" \
+  --substitutions "_IMAGE=$IMAGE" --project "$PROJECT_ID" "$SCRIPT_DIR"
 
 echo "==> Deploying Cloud Run service (public, unauthenticated) as $WEBAPI_SA..."
 gcloud run deploy "$SERVICE_NAME" \

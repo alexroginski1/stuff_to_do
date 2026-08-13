@@ -95,6 +95,7 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
         "location_type": location_type,
         "calendar": calendar_name,
         "source_type": "automatic" if is_automatic else "manual",
+        "source": private_props.get("source"),
     }
 
 
