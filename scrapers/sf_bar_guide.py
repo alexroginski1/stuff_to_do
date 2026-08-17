@@ -50,8 +50,9 @@ _WEEKDAYS = {
     "Sunday": 6,
 }
 
-# (emoji, label) per bar-event category, prefixed onto the event title as
-# "{emoji} {label}: {event name}".
+# (emoji, label) per bar-event category; the emoji is prefixed onto the
+# event title as "{emoji} {event name}" (the label itself is unused in the
+# title but kept for logging/debugging).
 _CATEGORY_META: dict[str, tuple[str, str]] = {
     "dance": ("🕺", "Dance"),
     "trivia": ("🧠", "Trivia"),
@@ -250,7 +251,7 @@ def _parse_bar_events(bar: dict, today: date, cutoff: date) -> List[Event]:
         if occurrence_date is None:
             continue
 
-        emoji, label = _classify(f"{event_name} {raw_event.get('notes', '')}")
+        emoji, _label = _classify(f"{event_name} {raw_event.get('notes', '')}")
         description_parts = []
         notes = raw_event.get("notes")
         if notes:
@@ -259,7 +260,7 @@ def _parse_bar_events(bar: dict, today: date, cutoff: date) -> List[Event]:
 
         events.append(
             Event(
-                name=f"{emoji} {label}: {event_name}",
+                name=f"{emoji} {event_name}",
                 start_time=datetime.combine(occurrence_date, event_time, tzinfo=_TZ),
                 end_time=None,
                 location=location,

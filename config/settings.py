@@ -569,6 +569,15 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Dancing",
         "enabled": True,
     },
+    "sfmoma": {
+        "label": "SFMOMA",
+        "location": "SoMA",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=151+Third+Street%2C+San+Francisco%2C+CA+94103",
+        "emoji": "🏛️",
+        "display_url": "https://www.sfmoma.org/events/",
+        "calendar": "SF Arts/Culture",
+        "enabled": True,
+    },
     "bats_improv": {
         "label": "BATS Improv",
         "emoji": "🎭",
