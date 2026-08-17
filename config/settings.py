@@ -554,9 +554,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "presidio": {
-        "label": "The Presidio",
-        "location": "Presidio",
-        "location_link": "https://www.google.com/maps/search/?api=1&query=Presidio%2C+San+Francisco%2C+CA",
+        "label": "Presidio Events",
         "emoji": "🌲",
         "display_url": "https://presidio.gov/explore/events",
         "calendar": "SF Community",

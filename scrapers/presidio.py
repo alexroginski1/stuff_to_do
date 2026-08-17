@@ -21,7 +21,8 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime, timedelta
+from calendar import monthrange
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 from zoneinfo import ZoneInfo
@@ -37,7 +38,6 @@ _SOURCE = Path(__file__).stem
 _EVENTS_API = "https://wp.presidio.gov/wp-json/tribe/events/v1/events"
 _EVENT_PAGE_BASE = "https://presidio.gov/explore/events/"
 _TZ = ZoneInfo("America/Los_Angeles")
-_WINDOW_DAYS = 90
 _MAX_PAGES = 10
 
 _NEXT_DATA_RE = re.compile(
@@ -60,13 +60,14 @@ def _parse_local_dt(s: str) -> Optional[datetime]:
 
 
 def _fetch_occurrences() -> List[dict]:
-    """List every upcoming event occurrence in the fetch window via the
-    Tribe Events REST API. Unbounded (no end_date filter) this endpoint
-    returns 1500+ occurrences stretching years into the future because of
-    daily recurring events, so the window keeps this to what's actually
-    useful to show on the calendar."""
+    """List every upcoming event occurrence through the end of the current
+    month via the Tribe Events REST API. Unbounded (no end_date filter) this
+    endpoint returns 1500+ occurrences stretching years into the future
+    because of daily recurring events, so the window keeps this to the
+    current month, mirroring the site's own "Featured Events" + current-month
+    calendar section rather than pulling far-future occurrences."""
     today = datetime.now(tz=_TZ).date()
-    end = today + timedelta(days=_WINDOW_DAYS)
+    end = today.replace(day=monthrange(today.year, today.month)[1])
 
     occurrences: List[dict] = []
     page = 1

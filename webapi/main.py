@@ -28,14 +28,19 @@ _DESCRIPTION_ALLOWED_TAGS = ["a", "b", "i", "strong", "em", "u", "br", "p", "ul"
 _DESCRIPTION_ALLOWED_ATTRS = {"a": ["href"]}
 
 
+_MANUAL_SOURCE_LABEL = "Manually Added Events"
+
+
 def _source_label(key: str | None) -> str:
     """Look up a scraper source key's display label from config.settings.SOURCES.
 
-    Falls back to the raw key for manual events (no source key at all) or a
-    key not found in SOURCES (e.g. a scraper that's since been removed).
+    Manually added events (no source key at all, since only the parser
+    stamps that extendedProperty) get a fixed label. A key not found in
+    SOURCES (e.g. a scraper that's since been removed) falls back to the raw
+    key.
     """
     if not key:
-        return ""
+        return _MANUAL_SOURCE_LABEL
     return SOURCES.get(key, {}).get("label", key)
 
 
