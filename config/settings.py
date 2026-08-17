@@ -562,6 +562,13 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Community",
         "enabled": True,
     },
+    "dance_fridays": {
+        "label": "Dance Fridays",
+        "emoji": "💃",
+        "display_url": "https://www.eventbrite.com/o/dance-fridays-8106527232",
+        "calendar": "SF Dancing",
+        "enabled": True,
+    },
     "bats_improv": {
         "label": "BATS Improv",
         "emoji": "🎭",
