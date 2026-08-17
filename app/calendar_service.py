@@ -215,6 +215,11 @@ def _build_body(event: Event) -> dict:
     if raw_location:
         parts.append(f'location provided by event source: "{raw_location}"')
 
+    promo_url = src_meta.get("promo_url")
+    if promo_url:
+        promo_text = src_meta.get("promo_text", "")
+        parts.append(f'{promo_text} <a href="{promo_url}">{promo_url}</a>'.strip())
+
     description = "\n".join(parts) + _FOOTER
     emoji = src_meta.get("emoji", "")
     name_with_price = f"{event.name} ({eventbrite_price})" if eventbrite_price else event.name

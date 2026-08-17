@@ -25,7 +25,9 @@
       "Bash(gcloud run *)",
       "Bash(python3 -m py_compile scrapers/heylo.py)",
       "Bash(env)",
-      "Bash(curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/b5ef0a8f-df9d-4281-b128-b56e0feed021/scratchpad/events.html)"
+      "Bash(curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/b5ef0a8f-df9d-4281-b128-b56e0feed021/scratchpad/events.html)",
+      "Bash(curl -sL -A \"Mozilla/5.0\" \"https://presidio.gov/explore/events/bay-area-international-deaf-dance-festival/\" -o /tmp/pe4.html -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://presidio.gov/_next/data/kuZe2_3sKp8xh-ZE6JWhW/explore/events/bay-area-international-deaf-dance-festival.json\" -o /tmp/pe4data.json -w \"%{http_code}\\\\n\")"
     ]
   }
 }

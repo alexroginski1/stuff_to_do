@@ -21,6 +21,8 @@ CALENDAR_LINKS = {
     "SF Bars": "9c8685a68b697409a5bffa6ce3011651930fa18572dad9ef435215753a43de22@group.calendar.google.com",
     "SF Dancing": "704367c0fe7ec0383a79ab3bd6a4388d8c867642120862ffa11191fdb27e407f@group.calendar.google.com",
     "SF Exercise": "2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f@group.calendar.google.com",
+    "SF Zen Center": "d668dd99f1b1452b81324f8024930e562097bc7abe2f54c45d4816f3b26c8511@group.calendar.google.com",
+    "SF Shows": "88eb45ae7b30e306d2d467e36f616db20abf74008d161ed225419e4e2a4b9538@group.calendar.google.com",
 }
 
 
@@ -180,6 +182,24 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Bars",
         "enabled": True,
     },
+    "golden_sardine": {
+        "label": "Golden Sardine",
+        "location": "North Beach",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=362+Columbus+Ave%2C+San+Francisco%2C+CA+94133",
+        "emoji": "🐟",
+        "display_url": "https://www.goldensardinesf.com/events",
+        "calendar": "SF Bars",
+        "enabled": True,
+    },
+    "rootdivision": {
+        "label": "Root Division",
+        "location": "Mission St",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=1131+Mission+Street%2C+San+Francisco%2C+CA+94103",
+        "emoji": "🖌️",
+        "display_url": "https://rootdivision.org/gallery/events/",
+        "calendar": "SF Arts/Culture",
+        "enabled": True,
+    },
     "madrone_art_bar": {
         "label": "Madrone Art Bar",
         "location": "Alamo Square",
@@ -334,6 +354,36 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Arts/Culture",
         "enabled": True,
     },
+    "lower_haight_local": {
+        "label": "Lower Haight Local",
+        "location": "Lower Haight",
+        "location_link": "https://maps.app.goo.gl/sD1asWWUYL11KqmEA",
+        "emoji": "📰",
+        "display_url": "https://www.heylo.com/g/18608def-640e-4bb9-8331-1d28f1908040",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "sapiens": {
+        "label": "Sapiens",
+        "emoji": "✷",
+        "display_url": "https://www.heylo.com/g/b30541ef-38c1-40c6-af55-3d100bf5d93d",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "bad_art_club": {
+        "label": "Bad Art Club",
+        "emoji": "🎨",
+        "display_url": "https://www.eventbrite.com/cc/bad-art-club-4684923",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "founders_running_club": {
+        "label": "Founders Running Club San Francisco",
+        "emoji": "🏃",
+        "display_url": "https://www.heylo.com/g/1270104d-2bf6-4f8c-ae29-22ef502df080",
+        "calendar": "SF Tech",
+        "enabled": True,
+    },
     # Meetup.com sources. All get the shared 🧑‍🤝‍🧑 prefix (marks them as
     # Meetup-sourced) followed by a per-source emoji.
     "meetup_book_club": {
@@ -467,6 +517,60 @@ SOURCES: dict[str, dict] = {
         "emoji": "🧑‍🤝‍🧑✏️",
         "display_url": "https://www.meetup.com/sf-sketchers/",
         "calendar": "SF Arts/Culture",
+        "enabled": True,
+    },
+    "sf_zen_center": {
+        "label": "SF Zen Center",
+        "location": "Hayes Valley",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=300+Page+Street%2C+San+Francisco%2C+CA+94102",
+        "emoji": "☯️",
+        "display_url": "https://www.sfzc.org/city-center-calendar",
+        "calendar": "SF Zen Center",
+        "enabled": True,
+    },
+    "fort_mason_center": {
+        "label": "Fort Mason Center for Arts & Culture",
+        "location": "Marina District",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=2+Marina+Blvd%2C+San+Francisco%2C+CA+94123",
+        "emoji": "⛵",
+        "display_url": "https://www.eventbrite.com/o/20246696685",
+        "calendar": "SF Arts/Culture",
+        "enabled": True,
+    },
+    "a_listers_entertainment": {
+        "label": "A Listers Entertainment",
+        "emoji": "🌃",
+        "display_url": "https://www.eventbrite.com/o/12913251409",
+        "calendar": "SF Bars",
+        "enabled": True,
+    },
+    "fog_city_run": {
+        "label": "Fog City Run",
+        "location": "Marina District: The Blue Light, 1979 Union St",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=1979+Union+St%2C+San+Francisco%2C+CA+94123",
+        "emoji": "🏃",
+        "display_url": "https://www.heylo.com/g/eba0b87a-f4ca-4ff2-bdfb-0d6b4729eb84",
+        "calendar": "SF Exercise",
+        "enabled": True,
+    },
+    "presidio": {
+        "label": "The Presidio",
+        "location": "Presidio",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=Presidio%2C+San+Francisco%2C+CA",
+        "emoji": "🌲",
+        "display_url": "https://presidio.gov/explore/events",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "bats_improv": {
+        "label": "BATS Improv",
+        "emoji": "🎭",
+        "display_url": "https://www.eventbrite.com/o/bats-improv-shows-120768857464",
+        "calendar": "SF Shows",
+        # Appended as the last line of the event description, before the
+        # standard site footer. Requested by the user for this source.
+        "promo_text": "Looking for shows? Please check",
+        "promo_url": "https://bayareashows.org/",
         "enabled": True,
     },
 }

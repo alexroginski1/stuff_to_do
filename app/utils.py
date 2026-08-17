@@ -199,7 +199,12 @@ def _eventbrite_event_id(url: str) -> Optional[str]:
 
 
 def fetch_eventbrite_price(url: str) -> Optional[str]:
-    """Return a formatted price string for an Eventbrite event using the API."""
+    """Return a formatted price string for an Eventbrite event using the API.
+
+    Shows every distinct ticket price, ascending, slash-separated (e.g.
+    "$17/$28/$39") rather than just the cheapest, since ticket tiers are
+    often meaningfully different (e.g. early bird vs. door price).
+    """
     event_id = _eventbrite_event_id(url)
     if not event_id:
         logger.warning(f"Could not extract Eventbrite event ID from {url}")
@@ -209,18 +214,15 @@ def fetch_eventbrite_price(url: str) -> Optional[str]:
         visible = [tc for tc in data.get("ticket_classes", []) if not tc.get("hidden")]
         if not visible:
             return None
-        # Use the lowest priced ticket; free tickets have cost=None and free=True
+
+        # Free tickets have cost=None and free=True.
         def _cents(tc: dict) -> int:
             cost = tc.get("cost")
             return cost["value"] if cost else 0
 
-        cheapest = min(visible, key=_cents)
-        cost = cheapest.get("cost")
-        if not cost:
-            return "Free"
-        value = cost.get("value", 0)
-        currency = cost.get("currency", "USD")
-        return f"${round(value / 100)}"
+        distinct_cents = sorted({_cents(tc) for tc in visible})
+        labels = ["Free" if cents == 0 else f"${round(cents / 100)}" for cents in distinct_cents]
+        return "/".join(labels)
     except Exception as e:
         logger.warning(f"Failed to fetch Eventbrite price for {url}: {e}")
     return None
