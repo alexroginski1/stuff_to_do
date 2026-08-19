@@ -81,6 +81,10 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
         # event (see Event.location_verified) — no need to spend a Places
         # API call/cache entry re-resolving it.
         cleaned_location, location_type = raw_location, "exact"
+    elif private_props.get("location_inexact") == "true":
+        # Scraper deliberately marked this location as approximate (see
+        # Event.location_inexact) — skip Places and always report inexact.
+        cleaned_location, location_type = raw_location, "inexact"
     else:
         cleaned_location, location_type = resolve_location(raw_location)
     return {

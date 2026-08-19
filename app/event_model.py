@@ -20,6 +20,12 @@ class Event:
     # lets downstream location resolution skip a pointless API call/cache
     # write for a value that's already exact.
     location_verified: bool = field(default=False)
+    # True when a scraper has deliberately set `location` to an approximate
+    # spot (e.g. presidio.py, whose actual event locations vary across a
+    # large park) rather than a real venue address — bypasses Google Places
+    # and is always reported as location_type "inexact" downstream, instead
+    # of letting Places resolve it to a misleadingly precise address.
+    location_inexact: bool = field(default=False)
 
     @property
     def unique_key(self) -> str:

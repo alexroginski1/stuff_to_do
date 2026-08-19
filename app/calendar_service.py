@@ -152,14 +152,15 @@ def _resolve_event_location(event: Event) -> str:
     """Resolve `event.location` (raw, scraped) to the address to put on the calendar event.
 
     Skips the Places lookup entirely when a scraper already hardcoded a
-    known-correct address (`event.location_verified`). Otherwise resolves via
-    Google Places and falls back to the raw location whenever that lookup
-    doesn't produce a usable result (API error, missing key, zero results, or
-    an area name rather than a specific venue) — never NOT_FOUND on the
-    actual calendar event.
+    known-correct address (`event.location_verified`) or deliberately marked
+    the location as approximate (`event.location_inexact`). Otherwise
+    resolves via Google Places and falls back to the raw location whenever
+    that lookup doesn't produce a usable result (API error, missing key,
+    zero results, or an area name rather than a specific venue) — never
+    NOT_FOUND on the actual calendar event.
     """
     raw = event.location or ""
-    if event.location_verified or not raw:
+    if event.location_verified or event.location_inexact or not raw:
         return raw
     cleaned, _ = resolve_location(raw)
     return raw if cleaned == NOT_FOUND else cleaned
@@ -237,6 +238,7 @@ def _build_body(event: Event) -> dict:
                 "created_by": "event_parser",
                 "parser_version": "v1",
                 "location_verified": "true" if event.location_verified else "false",
+                "location_inexact": "true" if event.location_inexact else "false",
                 "raw_location": raw_location,
             }
         },
