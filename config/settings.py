@@ -472,6 +472,13 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Community",
         "enabled": True,
     },
+    "luz_circle": {
+        "label": "Luz Circle",
+        "emoji": "🌀",
+        "display_url": "https://partiful.com/u/9ysLpxe3H5cOS5cOS0uI",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
     "board_games_egl": {
         "label": "Board Games with EGL",
         "emoji": "🎲",
@@ -651,6 +658,13 @@ SOURCES: dict[str, dict] = {
         "emoji": "🧑‍🤝‍🧑✏️",
         "display_url": "https://www.meetup.com/sf-sketchers/",
         "calendar": "SF Arts/Culture",
+        "enabled": True,
+    },
+    "meetup_catch_up": {
+        "label": "Catch Up",
+        "emoji": "🧑‍🤝‍🧑⚾",
+        "display_url": "https://www.meetup.com/catch-up/",
+        "calendar": "SF Exercise",
         "enabled": True,
     },
     "sf_zen_center": {

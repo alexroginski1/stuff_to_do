@@ -195,7 +195,13 @@ def fetch_partiful_host_events(user_id: str, source: str, title_prefix: str = ""
         if item.get("status") != "PUBLISHED":
             continue
         start = item.get("startDate")
-        if not start or parse_iso_datetime(start) < cutoff:
+        if not start:
+            continue
+        try:
+            if parse_iso_datetime(start) < cutoff:
+                continue
+        except ValueError:
+            logger.warning(f"[{source}] skipping event with unparseable startDate: {start!r}")
             continue
 
         event_id = item.get("id")
