@@ -29,7 +29,16 @@
       "Bash(curl -s -A Mozilla/5.0 https://www.sfbarguide.com/bar/spark-social -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/9701133d-af62-426c-baf9-7da7a1902273/scratchpad/bar.html -w '%{http_code}\\\\n')",
       "Bash(python3)",
       "Bash(python3 -m py_compile scrapers/sf_bar_guide.py config/settings.py)",
-      "Bash(python3 -c \"import ast; ast.parse\\(open\\('config/settings.py'\\).read\\(\\)\\)\")"
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('config/settings.py'\\).read\\(\\)\\)\")",
+      "Bash(env)",
+      "Bash(curl -s \"https://mobilize.us/api/v1/organizations/civicjoyfund/events/?tag_ids=546\" -A \"Mozilla/5.0\")",
+      "Bash(curl -s \"https://api.mobilize.us/v1/organizations?slug=civicjoyfund\" -A \"Mozilla/5.0\")",
+      "Bash(curl -s \"https://api.mobilize.us/v1/organizations\" -A \"Mozilla/5.0\" -G --data-urlencode \"slug=civicjoyfund\")",
+      "Bash(curl -s \"https://api.mobilize.us/v1/organizations\" -A \"Mozilla/5.0\" -G --data-urlencode \"search=Civic Joy Fund\")",
+      "Bash(curl -s \"https://api.mobilize.us/v1/organizations\" -A \"Mozilla/5.0\" -G --data-urlencode \"name=civicjoyfund\")",
+      "Bash(curl -s \"https://www.mobilize.us/civicjoyfund/?tag_ids=546\" -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36\" -L -o /tmp/mobilize.html)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://www.mobilize.us/civicjoyfund/event/756069/\" -A \"Mozilla/5.0\")",
+      "Bash(python3 -m py_compile config/settings.py app/utils.py scrapers/sf_supper_club.py scrapers/wine_club_sf.py scrapers/best_medicine_comedy.py scrapers/blankets_and_wine_comedy.py scrapers/mission_loteria.py scrapers/chai_rave.py scrapers/church_of_8_wheels.py scrapers/civic_joy_fund.py)"
     ]
   }
 }

@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 
@@ -226,6 +226,90 @@ def fetch_eventbrite_price(url: str) -> Optional[str]:
     except Exception as e:
         logger.warning(f"Failed to fetch Eventbrite price for {url}: {e}")
     return None
+
+
+# ---------------------------------------------------------------------------
+# Mobilize.us helpers
+# ---------------------------------------------------------------------------
+
+_MOBILIZE_DATA_RE = re.compile(r"window\.__MLZ_EMBEDDED_DATA__\s*=\s*(\{.*?\});\s*\n")
+
+
+def _mobilize_get_page(org_slug: str, page: int, tag_ids: Optional[List[str]] = None) -> dict:
+    params: dict = {"page": page}
+    if tag_ids:
+        params["tag_ids"] = tag_ids
+    resp = _session.get(
+        f"https://www.mobilize.us/{org_slug}/",
+        headers=_DEFAULT_HEADERS,
+        params=params,
+        timeout=20,
+    )
+    resp.raise_for_status()
+    match = _MOBILIZE_DATA_RE.search(resp.text)
+    if not match:
+        raise RuntimeError(f"__MLZ_EMBEDDED_DATA__ not found on Mobilize page: {resp.url}")
+    return json.loads(match.group(1))["data"]
+
+
+def _mobilize_location(e: dict) -> Optional[str]:
+    if e.get("is_virtual"):
+        return None
+    parts = [e.get("location_name"), e.get("address_line1"), e.get("city")]
+    return ", ".join([p for p in parts if p]) or None
+
+
+def fetch_mobilize_org_events(
+    org_slug: str, source: str, tag_ids: Optional[List[str]] = None, max_pages: int = 10
+) -> List["Event"]:
+    """Fetch upcoming events for a Mobilize.us organization page, one Event per timeslot
+    (recurring events like weekly cleanups list multiple timeslots under a single event)."""
+    from app.event_model import Event
+
+    events: List[Event] = []
+    now = datetime.now(timezone.utc)
+    page = 1
+
+    while page <= max_pages:
+        try:
+            data = _mobilize_get_page(org_slug, page, tag_ids)
+        except Exception as exc:
+            logger.warning(f"[{source}] failed to fetch Mobilize page {page}: {exc}")
+            break
+
+        raw_events = data.get("events", [])
+        for e in raw_events:
+            name = e.get("name")
+            event_id = e.get("id")
+            if not name or not event_id:
+                continue
+
+            location = _mobilize_location(e)
+            description = e.get("description")
+            url = f"https://www.mobilize.us/{org_slug}/event/{event_id}/"
+
+            for slot in e.get("times") or []:
+                start = parse_iso_datetime(slot["start"]) if slot.get("start") else None
+                if not start or start < now:
+                    continue
+                end = parse_iso_datetime(slot["end"]) if slot.get("end") else None
+                events.append(Event(
+                    name=name.strip(),
+                    start_time=start,
+                    end_time=end,
+                    location=location,
+                    description=description,
+                    source_url=url,
+                    source=source,
+                ))
+
+        num_pages = (data.get("paging_info") or {}).get("num_pages", 1)
+        logger.info(f"[{source}] Mobilize page {page}/{num_pages}: {len(raw_events)} events")
+        if page >= num_pages:
+            break
+        page += 1
+
+    return events
 
 
 # ---------------------------------------------------------------------------
