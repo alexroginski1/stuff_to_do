@@ -8,6 +8,8 @@ import requests
 
 from app.location_cache_store import get_cached_location, save_location
 from app.location_stats_store import record_api_call, record_cache_hit
+from app.neighborhood_cache_store import get_cached_neighborhood, save_neighborhood
+from app.neighborhood_service import neighborhood_for
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,10 @@ _GENERIC_WORDS = {
 # the persistent Firestore cache to avoid a redundant DB read for a venue
 # string that repeats across many events in the same run.
 _cache: dict[str, tuple[str, str]] = {}
+
+# Same in-run layering as `_cache`, but for resolve_neighborhood, keyed by
+# exact address string.
+_neighborhood_cache: dict[str, str | None] = {}
 
 
 def _significant_words(text: str) -> set[str]:
@@ -199,3 +205,51 @@ def resolve_location(raw_location: str | None) -> tuple[str, str]:
     if resolved[0] != NOT_FOUND:
         save_location(raw, resolved[0], resolved[1])
     return resolved
+
+
+def resolve_neighborhood(address: str | None) -> str | None:
+    """Resolve an exact address to its San Francisco neighborhood, backed by a persistent cache.
+
+    Only meaningful for an "exact" (real address/venue) location — call this
+    with `cleaned_location` when `location_type == "exact"`, not with a raw
+    scraped string or an inexact/area location.
+
+    Geocodes `address` via Google Places (same API as `resolve_location`) to
+    get its lat/lng, then does a point-in-polygon lookup against the SF
+    neighborhood boundaries (app/neighborhood_service.py). Returns None both
+    when geocoding fails/is unconfigured and when the address is legitimately
+    outside every SF neighborhood (e.g. a venue in Oakland or Berkeley) — the
+    latter is cached permanently since it won't change; the former is not
+    cached, so it's retried next run.
+    """
+    address = (address or "").strip()
+    if not address:
+        return None
+    if address in _neighborhood_cache:
+        return _neighborhood_cache[address]
+
+    hit, cached = get_cached_neighborhood(address)
+    if hit:
+        record_cache_hit()
+        _neighborhood_cache[address] = cached
+        return cached
+
+    api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+    if not api_key:
+        logger.error("GOOGLE_PLACES_API_KEY not configured; skipping neighborhood resolution")
+        return None
+
+    result = _places_text_search(address, api_key)
+    if result is None:
+        return None
+
+    location = (result.get("geometry") or {}).get("location") or {}
+    try:
+        lat, lon = float(location["lat"]), float(location["lng"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    neighborhood = neighborhood_for(lat, lon)
+    _neighborhood_cache[address] = neighborhood
+    save_neighborhood(address, neighborhood)
+    return neighborhood

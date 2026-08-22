@@ -137,12 +137,13 @@ def events_table():
         f"<td>{escape(d.get('raw_location') or '')}</td>"
         f"<td>{escape(d.get('cleaned_location') or '')}</td>"
         f"<td>{escape(d.get('location_type') or '')}</td>"
+        f"<td>{escape(d.get('neighborhood') or '')}</td>"
         f"<td>{escape(d.get('calendar') or '')}</td>"
         f"<td>{escape(d.get('source_type') or '')}</td>"
         f"<td>{escape(_source_label(d.get('source')))}</td>"
         f"<td>{_gcal_link_cell(d.get('gcal_link'))}</td></tr>"
         for d in docs
-    ) or '<tr><td colspan="11">No upcoming events</td></tr>'
+    ) or '<tr><td colspan="12">No upcoming events</td></tr>'
 
     return f"""<!doctype html>
 <html>
@@ -168,6 +169,7 @@ def events_table():
   <thead>
     <tr><th>Event Title</th><th>Event Description</th><th>Start</th><th>End</th>
         <th>Raw Location</th><th>Cleaned Location</th><th>Location Type</th>
+        <th>Neighborhood</th>
         <th>Source Google Calendar</th><th>Manual / Automatic</th><th>Event Source</th>
         <th>Calendar Link</th></tr>
   </thead>

@@ -22,7 +22,7 @@ from app.calendar_service import (
 
 from app.event_model import Event
 from app.event_snapshot_store import write_snapshot
-from app.location_service import resolve_location
+from app.location_service import resolve_location, resolve_neighborhood
 from app.notifier import format_parsing_issues_email, send_error_email
 from app.stats_store import record_stats
 from app.utils import emit_metric
@@ -87,6 +87,10 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
         cleaned_location, location_type = raw_location, "inexact"
     else:
         cleaned_location, location_type = resolve_location(raw_location)
+    # Only an "exact" location names a real address/venue that a
+    # neighborhood boundary lookup is meaningful for — an "inexact" location
+    # is either an area name (e.g. "Mission District") or NOT_FOUND.
+    neighborhood = resolve_neighborhood(cleaned_location) if location_type == "exact" else None
     return {
         "gcal_id": event["id"],
         "gcal_link": event.get("htmlLink") or "",
@@ -97,6 +101,7 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
         "raw_location": raw_location,
         "cleaned_location": cleaned_location,
         "location_type": location_type,
+        "neighborhood": neighborhood,
         "calendar": calendar_name,
         "source_type": "automatic" if is_automatic else "manual",
         "source": private_props.get("source"),
