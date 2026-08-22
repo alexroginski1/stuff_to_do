@@ -23,6 +23,7 @@ CALENDAR_LINKS = {
     "SF Exercise": "2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f@group.calendar.google.com",
     "SF Mindfulness": "d668dd99f1b1452b81324f8024930e562097bc7abe2f54c45d4816f3b26c8511@group.calendar.google.com",
     "SF Shows": "88eb45ae7b30e306d2d467e36f616db20abf74008d161ed225419e4e2a4b9538@group.calendar.google.com",
+    "SF Library": "200e6e3f56fe5cf18e1cc18aa256ce255361192daca83cdf25a2ce012e45629f@group.calendar.google.com",
 }
 
 
@@ -47,6 +48,10 @@ DEDUP_RULES: dict[str, dict] = {
     # different sources (e.g. ArtBae vs. ArtBusiness), but a real duplicate
     # is always the same gallery at the same time, so match on location only.
     "SF Arts/Culture": {"fields": ("location",), "time_window_minutes": 30},
+    # SFPL runs the same program (e.g. "Storytime: For Families") at many
+    # branches at the exact same time, so title alone isn't a safe dedup key
+    # here — require the location to match too.
+    "SF Library": {"fields": ("summary", "location"), "time_window_minutes": 0},
 }
 
 
@@ -91,6 +96,15 @@ SOURCES: dict[str, dict] = {
         "location_link": "https://maps.app.goo.gl/vzyNdBP39hJtJ2XC9",
         "emoji": "👥",
         "display_url": "https://decentered.org/events",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "garden_for_the_environment": {
+        "label": "Garden for the Environment",
+        "location": "Inner Sunset",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=1590+7th+Avenue%2C+San+Francisco%2C+CA+94122",
+        "emoji": "🌱",
+        "display_url": "https://www.eventbrite.com/o/924286027",
         "calendar": "SF Community",
         "enabled": True,
     },
@@ -874,6 +888,23 @@ SOURCES: dict[str, dict] = {
         "emoji": "🎺",
         "display_url": "https://www.stookeysblueroom.com/musicandevents",
         "calendar": "SF Bars",
+        "enabled": True,
+    },
+    "sunset_mercantile": {
+        "label": "Sunset Mercantile",
+        "emoji": "🛍️",
+        "display_url": (
+            "https://calendar.google.com/calendar/embed?src=admin%40sunsetmercantilesf.com"
+            "&ctz=America%2FLos_Angeles"
+        ),
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "sfpl_events": {
+        "label": "SF Public Library Events",
+        "emoji": "📚",
+        "display_url": "https://sfpl.org/events/",
+        "calendar": "SF Library",
         "enabled": True,
     },
 }
