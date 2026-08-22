@@ -27,7 +27,24 @@
       "Bash(env)",
       "Bash(curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/b5ef0a8f-df9d-4281-b128-b56e0feed021/scratchpad/events.html)",
       "Bash(curl -sL -A \"Mozilla/5.0\" \"https://presidio.gov/explore/events/bay-area-international-deaf-dance-festival/\" -o /tmp/pe4.html -w \"%{http_code}\\\\n\")",
-      "Bash(curl -s -A \"Mozilla/5.0\" \"https://presidio.gov/_next/data/kuZe2_3sKp8xh-ZE6JWhW/explore/events/bay-area-international-deaf-dance-festival.json\" -o /tmp/pe4data.json -w \"%{http_code}\\\\n\")"
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://presidio.gov/_next/data/kuZe2_3sKp8xh-ZE6JWhW/explore/events/bay-area-international-deaf-dance-festival.json\" -o /tmp/pe4data.json -w \"%{http_code}\\\\n\")",
+      "WebFetch(domain:www.gamescapesf.store)",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\" \"https://www.gamescapesf.store/events\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/a38d4fa2-5f87-4bbd-ad7b-223f1d50c5fb/scratchpad/gamescape.html -L -w \"%{http_code}\\\\n\")",
+      "Bash(echo \"found: $?\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://www.gamescapesf.store/app/cms/events\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/a38d4fa2-5f87-4bbd-ad7b-223f1d50c5fb/scratchpad/cms_events.json -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(compatible; Googlebot/2.1; +http://www.google.com/bot.html\\)\" \"https://www.gamescapesf.store/events\" -o gamescape_bot.html -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://cdn3.editmysite.com/app/website/js/site.b9df503bf0bc225cf469.js\" -o site.js -w \"%{http_code} size=%{size_download}\\\\n\")",
+      "Bash(grep -o '/app/cms/api/v1[a-zA-Z0-9/_${}.-]*' site.js)",
+      "Bash(grep -o '/app/website/cms/api/v1[a-zA-Z0-9/_${}.-]*' site.js)",
+      "Bash(grep -o '/app/[a-zA-Z0-9/_${}.-]*page[a-zA-Z0-9/_${}.-]*' site.js)",
+      "Bash(grep -o '/app/square-sync[a-zA-Z0-9/_${}.-]*' site.js)",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://www.gamescapesf.store/app/square-sync/published/users/66c4dde7-74a9-42cc-8818-0a5a9e8dfd30/site/4994da90-a6ae-11ea-96b0-e5ca2a75a7df/appointments/services\" -o services.json -w \"http:%{http_code} size:%{size_download}\\\\n\")",
+      "Bash(pip3 show *)",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\" \"https://www.dogpatch.games/calendar\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/a38d4fa2-5f87-4bbd-ad7b-223f1d50c5fb/scratchpad/dogpatch.html -L -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://www.dogpatch.games/calendar?format=json\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://www.dogpatch.games/allevents?format=json\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/a38d4fa2-5f87-4bbd-ad7b-223f1d50c5fb/scratchpad/allevents.json -w \"%{http_code} %{size_download}\\\\n\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -L \"https://www.dogpatch.games/store-events?format=json\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/a38d4fa2-5f87-4bbd-ad7b-223f1d50c5fb/scratchpad/store-events.json -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -D - \"https://www.dogpatch.games/store-events?format=json\" -o /dev/null)"
     ]
   }
 }

@@ -16,6 +16,7 @@ _ADDRESS = "550 Laguna St, San Francisco"
 
 def fetch_events() -> List[Event]:
     events = fetch_luma_events(_URL, _SOURCE)
+    events = [e for e in events if "members only" not in e.name.lower()]
     for event in events:
         event.location = _ADDRESS
         event.location_verified = True

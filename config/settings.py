@@ -456,6 +456,13 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Community",
         "enabled": True,
     },
+    "web_artists": {
+        "label": "Web",
+        "emoji": "🕸️",
+        "display_url": "https://partiful.com/u/DpKsStjnolxJV0zADMiC",
+        "calendar": "SF Arts/Culture",
+        "enabled": True,
+    },
     "studio_203_figure_drawing": {
         "label": "Studio 203: Figure Drawing",
         "location": "1890 Bryant St",

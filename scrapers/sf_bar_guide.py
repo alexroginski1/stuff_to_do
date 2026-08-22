@@ -35,10 +35,14 @@ _SOURCE = Path(__file__).stem
 _URL = "https://www.sfbarguide.com/"
 _TZ = ZoneInfo("America/Los_Angeles")
 
-# Only include events whose listing was verified within this many days.
-_VERIFIED_WINDOW_DAYS = 21
-
 _FOOTER_LINE = 'This event was parsed from <a href="https://www.sfbarguide.com/">the SF Bar Guide</a>'
+_VERIFICATION_NOTE = (
+    "Note: there is no 100% guarantee that this event is happening. The Bar "
+    "Guide doesn't update that events are verified to be happening very "
+    "often. This event is probably happening as of a month ago, but it's "
+    "best to check the bar's instagram or website to make sure. Thanks : )  "
+    "-Alex"
+)
 
 _WEEKDAYS = {
     "Monday": 0,
@@ -218,18 +222,7 @@ def _occurrence_date(event: dict, today: date) -> Optional[date]:
     return None
 
 
-def _is_recently_verified(event: dict, cutoff: date) -> Optional[date]:
-    raw = event.get("verified_date")
-    if not raw:
-        return None
-    try:
-        verified_date = date.fromisoformat(raw)
-    except ValueError:
-        return None
-    return verified_date if verified_date >= cutoff else None
-
-
-def _parse_bar_events(bar: dict, today: date, cutoff: date) -> List[Event]:
+def _parse_bar_events(bar: dict, today: date) -> List[Event]:
     name = bar.get("name")
     address = bar.get("address")
     if not name or not address:
@@ -239,9 +232,6 @@ def _parse_bar_events(bar: dict, today: date, cutoff: date) -> List[Event]:
 
     events: List[Event] = []
     for raw_event in bar.get("events", []):
-        if _is_recently_verified(raw_event, cutoff) is None:
-            continue
-
         event_name = raw_event.get("name")
         event_time = _parse_time(raw_event.get("time") or "")
         if not event_name or event_time is None:
@@ -257,6 +247,7 @@ def _parse_bar_events(bar: dict, today: date, cutoff: date) -> List[Event]:
         if notes:
             description_parts.append(notes)
         description_parts.append(_FOOTER_LINE)
+        description_parts.append(_VERIFICATION_NOTE)
 
         events.append(
             Event(
@@ -285,11 +276,10 @@ def fetch_events() -> List[Event]:
         return []
 
     today = datetime.now(tz=_TZ).date()
-    cutoff = today - timedelta(days=_VERIFIED_WINDOW_DAYS)
 
     events: List[Event] = []
     for bar in bars:
-        events.extend(_parse_bar_events(bar, today, cutoff))
+        events.extend(_parse_bar_events(bar, today))
 
     logger.info(f"[{_SOURCE}] parsed {len(events)} events from {len(bars)} bars")
     return events
