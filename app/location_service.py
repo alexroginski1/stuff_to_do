@@ -93,7 +93,15 @@ def _within_bay_area(lat: float, lon: float) -> bool:
     return lat_lo <= lat <= lat_hi and lon_lo <= lon <= lon_hi
 
 
-def _places_text_search(query: str, api_key: str) -> dict | None:
+def _places_text_search(query: str, api_key: str) -> tuple[dict | None, bool]:
+    """Run the Places text search, returning (top_result_or_None, api_call_succeeded).
+
+    `api_call_succeeded` is False only when the request itself didn't
+    complete (network error, non-OK/non-ZERO_RESULTS status) — a transient
+    problem worth retrying next run. A `ZERO_RESULTS` status is a completed,
+    trustworthy answer ("Places has nothing for this query"), so it comes
+    back as `(None, True)`.
+    """
     record_api_call()
     try:
         resp = requests.get(
@@ -110,54 +118,65 @@ def _places_text_search(query: str, api_key: str) -> dict | None:
         data = resp.json()
     except Exception as exc:
         logger.warning(f"Google Places lookup failed for {query!r}: {exc}")
-        return None
+        return None, False
 
     status = data.get("status")
+    if status == "ZERO_RESULTS":
+        return None, True
     if status != "OK":
-        if status != "ZERO_RESULTS":
-            logger.warning(
-                f"Google Places lookup for {query!r} returned status={status}: "
-                f"{data.get('error_message')}"
-            )
-        return None
+        logger.warning(
+            f"Google Places lookup for {query!r} returned status={status}: "
+            f"{data.get('error_message')}"
+        )
+        return None, False
 
     results = data.get("results") or []
-    return results[0] if results else None
+    return (results[0] if results else None), True
 
 
-def _resolve_via_places(raw: str) -> tuple[str, str, tuple[float, float] | None]:
+def _resolve_via_places(raw: str) -> tuple[str, str, tuple[float, float] | None, bool]:
+    """Resolve `raw` via Places.
+
+    Returns (cleaned_location, location_type, coords, cacheable). `cacheable`
+    is False only when the lookup didn't actually complete (missing API key,
+    network/HTTP failure) — those are worth retrying next run. Every other
+    NOT_FOUND outcome (Places ran and found nothing usable) is a real,
+    stable answer and is cacheable so it isn't re-queried.
+    """
     api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
     if not api_key:
         logger.error("GOOGLE_PLACES_API_KEY not configured; skipping location resolution")
-        return NOT_FOUND, "inexact", None
+        return NOT_FOUND, "inexact", None, False
 
-    result = _places_text_search(raw, api_key)
+    result, succeeded = _places_text_search(raw, api_key)
+    if not succeeded:
+        return NOT_FOUND, "inexact", None, False
     if result is None:
-        return NOT_FOUND, "inexact", None
+        return NOT_FOUND, "inexact", None, True
 
     location = (result.get("geometry") or {}).get("location") or {}
     try:
         lat, lon = float(location["lat"]), float(location["lng"])
     except (KeyError, TypeError, ValueError):
-        return NOT_FOUND, "inexact", None
+        return NOT_FOUND, "inexact", None, True
     if not _within_bay_area(lat, lon):
-        return NOT_FOUND, "inexact", None
+        return NOT_FOUND, "inexact", None, True
 
     formatted_address = result.get("formatted_address")
     if not formatted_address:
-        return NOT_FOUND, "inexact", None
+        return NOT_FOUND, "inexact", None, True
 
     types = set(result.get("types") or [])
     if types & _AREA_TYPES or types & _LOW_PRECISION_TYPES:
-        return raw, "inexact", None
+        return raw, "inexact", None, True
     if _is_city_level_address(formatted_address):
-        return raw, "inexact", None
+        return raw, "inexact", None, True
     if not any(ch.isdigit() for ch in raw) and not _looks_related(raw, result):
         # `raw` has no street number to anchor the search, and this result
         # doesn't reference anything from it — likely an unrelated same-ish
         # named place (Places has to return something), not a real match.
-        return raw, "inexact", None
-    return formatted_address, "exact", (lat, lon)
+        return raw, "inexact", None, True
+    return formatted_address, "exact", (lat, lon), True
 
 
 def resolve_location(raw_location: str | None) -> tuple[str, str, tuple[float, float] | None]:
@@ -178,12 +197,15 @@ def resolve_location(raw_location: str | None) -> tuple[str, str, tuple[float, f
     every "inexact"/NOT_FOUND result and for a cache hit predating coords
     being cached (retried next run, same as any other cache miss shape).
 
-    Every distinct raw string is only ever sent to the Places API once: a
-    successful resolution is saved to Firestore (location_cache_store) so
-    every later lookup for that same string — this run or any future one —
-    is a database read instead of a billed API call. NOT_FOUND results are
-    deliberately not persisted, so a transient failure (or a not-yet-set API
-    key) doesn't permanently poison the cache; they're retried next run.
+    Every distinct raw string is only ever sent to the Places API once: any
+    outcome where the lookup actually completed — an exact/inexact match, or
+    a confirmed "nothing usable" NOT_FOUND — is saved to Firestore
+    (location_cache_store) so every later lookup for that same string — this
+    run or any future one — is a database read instead of a billed API call.
+    Only a NOT_FOUND caused by the lookup itself failing to complete (no API
+    key configured, network/HTTP error) is left uncached, so a transient
+    problem doesn't permanently poison the cache; that case alone is retried
+    next run.
     """
     raw = (raw_location or "").strip()
     if not raw:
@@ -200,10 +222,11 @@ def resolve_location(raw_location: str | None) -> tuple[str, str, tuple[float, f
         record_cache_hit()
         return cached
 
-    resolved = _resolve_via_places(raw)
+    cleaned, location_type, coords, cacheable = _resolve_via_places(raw)
+    resolved = (cleaned, location_type, coords)
     _cache[raw] = resolved
-    if resolved[0] != NOT_FOUND:
-        save_location(raw, resolved[0], resolved[1], resolved[2])
+    if cacheable:
+        save_location(raw, cleaned, location_type, coords)
     return resolved
 
 

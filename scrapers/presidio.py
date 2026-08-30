@@ -11,10 +11,13 @@ from __future__ import annotations
 #    blob with the real content: `pageData.tribe_events.event_price`,
 #    `.subheading`, and a `long_description` block with the full write-up.
 #
-# The Presidio is a ~1,500-acre park, and per-event venue detail isn't
-# reliably available, so every event is pinned to a fixed point near the
-# park's center (Presidio Main Post) rather than a specific address, and
-# marked `location_inexact` so it's never mistaken for a precise venue.
+# The Presidio is a ~1,500-acre park, so per-event venue matters: each detail
+# page's `pageData.tribe_events.event_location` names the actual spot (e.g.
+# "Crissy Field", "Fort Point"). When that field is present, it's used as the
+# scraped location and resolved via Places downstream like any other scraper
+# output. Only when it's empty (some events omit it) does the event fall back
+# to a fixed pin near the park's center (Presidio Main Post), marked
+# `location_inexact` so it's never mistaken for a precise venue.
 #
 # Recurring events (e.g. daily "Park Ranger Campfire Talks") produce one API
 # occurrence per date but share the same URL slug (only the trailing date
@@ -143,10 +146,15 @@ def _fetch_detail(slug: str) -> dict:
             )
             break
 
+    location = _html_to_text(tribe.get("event_location"))
+    if location:
+        location = " ".join(location.split())
+
     return {
         "subheading": _html_to_text(tribe.get("subheading")),
         "long_description": _html_to_text(long_desc),
         "price": _html_to_text(tribe.get("event_price")),
+        "location": location,
     }
 
 
@@ -180,17 +188,18 @@ def fetch_events() -> List[Event]:
         if slug not in details:
             details[slug] = _fetch_detail(slug)
         detail = details[slug]
+        location = detail.get("location")
 
         events.append(
             Event(
                 name=name,
                 start_time=start,
                 end_time=end,
-                location=_LOCATION,
+                location=location or _LOCATION,
                 description=_build_description(detail),
                 source_url=url,
                 source=_SOURCE,
-                location_inexact=True,
+                location_inexact=not location,
             )
         )
 
