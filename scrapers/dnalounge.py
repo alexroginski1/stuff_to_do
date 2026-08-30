@@ -93,6 +93,7 @@ def _parse_page(html: str) -> List[Event]:
             description=description,
             source_url=url if url.startswith("http") else f"https://www.dnalounge.com{url}",
             source=_SOURCE,
+            location_verified=True,
         ))
 
     return events

@@ -39,6 +39,16 @@ def record_cache_hit() -> None:
     _increment("cache_hits")
 
 
+def record_format_bypass() -> None:
+    """Record one location skipped entirely because it was already a complete, plottable address as scraped.
+
+    See app.location_service._looks_like_full_address. Distinct from a cache
+    hit: this raw string was never looked up (by Places or the cache) at
+    all, this run or any prior one.
+    """
+    _increment("format_bypasses")
+
+
 def record_manual_override(raw_location: str, exact_location: str) -> None:
     """Log one raw_location -> exact_location conversion applied via the inexact_match_manual_update sheet.
 

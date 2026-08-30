@@ -82,6 +82,7 @@ def fetch_events() -> List[Event]:
             description=None,
             source_url=source_url,
             source=_SOURCE,
+            location_verified=True,
         ))
 
     logger.info(f"[{_SOURCE}] fetched {len(events)} events")

@@ -8,7 +8,12 @@ import requests
 
 from app.inexact_match_override_store import find_override
 from app.location_cache_store import get_cached_location, save_location
-from app.location_stats_store import record_api_call, record_cache_hit, record_manual_override
+from app.location_stats_store import (
+    record_api_call,
+    record_cache_hit,
+    record_format_bypass,
+    record_manual_override,
+)
 from app.neighborhood_service import neighborhood_for, neighborhood_name_match
 
 logger = logging.getLogger(__name__)
@@ -45,6 +50,53 @@ _LOW_PRECISION_TYPES = {"park", "natural_feature", "campground"}
 # Raw strings that describe a virtual/no-location event rather than a place —
 # never worth spending a Places lookup on, since any result would be wrong.
 _VIRTUAL_LOCATION_STRINGS = {"online", "online event", "virtual", "virtual event"}
+
+# A house number that starts the string, or starts right after a comma (so a
+# "Venue Name, 123 Main St, ..." shape still matches on its address segment
+# without a bare venue name like "Bar 821" matching on its own trailing
+# digits). One optional trailing letter covers unit-style numbers like
+# "223A". Requires at least one more word after it (digit or letter, so
+# ordinal street names like "16th St" still count) so a lone number can't
+# match.
+_HOUSE_NUMBER_RE = re.compile(r"(?:^|,)\s*\d{1,6}[A-Za-z]?\s+[A-Za-z0-9]")
+_ZIP_RE = re.compile(r"\b\d{5}(?:-\d{4})?\b")
+_STATE_RE = re.compile(r"\bca(?:lifornia)?\b", re.IGNORECASE)
+
+# Bay Area city names — this project only ever covers Bay Area events, so a
+# string naming one of these (even with no state/zip, e.g. "550 Laguna St,
+# San Francisco") already pins the address to a real, geocodable place.
+_BAY_AREA_CITIES = {
+    "san francisco", "sf", "oakland", "berkeley", "daly city",
+    "south san francisco", "san mateo", "emeryville", "alameda",
+    "richmond", "sausalito", "mill valley", "san rafael", "redwood city",
+    "palo alto", "mountain view", "san jose", "marin city", "novato",
+    "petaluma", "burlingame", "colma", "brisbane", "pacifica", "menlo park",
+}
+
+
+def _looks_like_full_address(raw: str) -> bool:
+    """Whether `raw` is already a complete, plottable street address — no Places lookup needed.
+
+    Requires a house-number-shaped token (see `_HOUSE_NUMBER_RE`) *and* some
+    signal that a real place, not just a street name, is being described: a
+    ZIP code, "CA"/"California", or a known Bay Area city name. A bare venue
+    name ("The Fillmore"), neighborhood ("Mission District"), or a
+    non-numeric landmark description never matches, so those still fall
+    through to Places (or to a manual override / NOT_FOUND) same as before.
+
+    Deliberately permissive about everything else — punctuation, a venue
+    name prefixed before the real address ("Manny's, 3092 16th St, San
+    Francisco, CA"), missing zip/state — since the goal is only to recognize
+    an address that's *already* good enough to plot, not to validate it the
+    way Places would.
+    """
+    if not _HOUSE_NUMBER_RE.search(raw):
+        return False
+    if _ZIP_RE.search(raw) or _STATE_RE.search(raw):
+        return True
+    lowered = raw.lower()
+    return any(city in lowered for city in _BAY_AREA_CITIES)
+
 
 # Words too common to count as evidence that a Places result actually matches
 # what `raw` was describing.
@@ -216,6 +268,17 @@ def resolve_location(raw_location: str | None) -> tuple[str, str, tuple[float, f
     saved to the location cache like any other resolution, and logged via
     record_manual_override for the /manual-location-overrides page — without
     ever calling Places, since the sheet's answer is already known-good.
+
+    Before any of that, `raw` is checked against `_looks_like_full_address`:
+    when a scraper already handed back a complete street address (its own
+    hardcoded venue address, or a structured field from the source's own
+    API/JSON — an Eventbrite/Meetup/Luma/Heylo/Partiful venue address, a
+    Squarespace address block, etc.), there's nothing for Places to add, so
+    it's used as-is with no lookup, cache read, or cache write at all. This
+    is what lets most scrapers reach "exact" without ever setting
+    Event.location_verified themselves — that flag remains for the cases
+    this check can't cover (a known-correct address that doesn't look like
+    one at a glance, or a deliberately approximate location).
     """
     raw = (raw_location or "").strip()
     if not raw:
@@ -225,6 +288,18 @@ def resolve_location(raw_location: str | None) -> tuple[str, str, tuple[float, f
     if raw in _cache:
         record_cache_hit()
         return _cache[raw]
+
+    if _looks_like_full_address(raw):
+        # Already a complete, plottable address as scraped — no Places call,
+        # no cache read/write needed, same as a scraper-set location_verified
+        # bypass (app/sync_engine.py). Skips the cache deliberately: this is
+        # cheaper than a Firestore read, and a stale cached "inexact" answer
+        # from before this check existed shouldn't override a raw string
+        # that's obviously fine on its face.
+        resolved = (raw, "exact", None)
+        _cache[raw] = resolved
+        record_format_bypass()
+        return resolved
 
     cached = get_cached_location(raw)
     if cached is not None and cached[1] != "inexact":
@@ -251,6 +326,35 @@ def resolve_location(raw_location: str | None) -> tuple[str, str, tuple[float, f
     if cacheable:
         save_location(raw, cleaned, location_type, coords)
     return resolved
+
+
+def location_requires_places(raw_location: str | None) -> bool:
+    """Whether resolving `raw_location` can only be done by asking Google Places.
+
+    False for everything `resolve_location` can answer without ever calling
+    Places: nothing to resolve (empty/virtual), an already-complete address
+    (`_looks_like_full_address`), or a raw string with a manually-curated
+    override. True for everything else — the only remaining case where
+    `resolve_location` falls through to `_resolve_via_places`.
+
+    A raw string already sitting in the location cache from a *past* Places
+    call still counts as True here — this answers "does this input need
+    Places", not "was Places actually called just now" (a cache hit avoids
+    the live call but only exists because Places was once required to
+    produce it). This is what backs the `places_api_required` column, kept
+    separate from `resolve_location` itself so callers (app/sync_engine.py)
+    can compute it whether or not they're also resolving the location.
+    """
+    raw = (raw_location or "").strip()
+    if not raw:
+        return False
+    if raw.lower() in _VIRTUAL_LOCATION_STRINGS:
+        return False
+    if _looks_like_full_address(raw):
+        return False
+    if find_override(raw) is not None:
+        return False
+    return True
 
 
 def resolve_neighborhood(

@@ -23,7 +23,7 @@ from app.calendar_service import (
 
 from app.event_model import Event
 from app.event_snapshot_store import write_snapshot
-from app.location_service import resolve_location, resolve_neighborhood
+from app.location_service import location_requires_places, resolve_location, resolve_neighborhood
 from app.notifier import format_parsing_issues_email, send_error_email
 from app.stats_store import record_stats
 from app.utils import emit_metric
@@ -77,6 +77,11 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
             raw_location = event.get("location") or ""
     else:
         raw_location = event.get("location") or ""
+    places_api_bypassed = (
+        private_props.get("location_verified") == "true"
+        or private_props.get("location_inexact") == "true"
+        or not location_requires_places(raw_location)
+    )
     if private_props.get("location_verified") == "true":
         # Scraper already hardcoded a known-correct full address for this
         # event (see Event.location_verified) — no need to spend a Places
@@ -100,6 +105,12 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
         "raw_location": raw_location,
         "cleaned_location": cleaned_location,
         "location_type": location_type,
+        # Whether this event's location can only be resolved by asking
+        # Google Places — False when the scraper already bypassed it via
+        # location_verified/location_inexact, or when raw_location is
+        # already a complete address / has a manual override on its own
+        # (see location_service.location_requires_places); True otherwise.
+        "places_api_required": not places_api_bypassed,
         "neighborhood": neighborhood,
         "calendar": calendar_name,
         "source_type": "automatic" if is_automatic else "manual",

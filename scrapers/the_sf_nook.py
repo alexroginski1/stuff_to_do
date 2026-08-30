@@ -59,6 +59,7 @@ def _parse_events(payload: dict) -> List[Event]:
                 description=e.get("description"),
                 source_url=e.get("link") or _URL,
                 source=_SOURCE,
+                location_verified=True,
             )
         )
 

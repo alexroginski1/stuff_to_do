@@ -129,6 +129,7 @@ def events_table():
     )
     places_api_calls = location_stats.get("api_calls", 0)
     places_cache_hits = location_stats.get("cache_hits", 0)
+    places_format_bypasses = location_stats.get("format_bypasses", 0)
 
     body_rows = "\n".join(
         f"<tr><td>{escape(d.get('title'))}</td>"
@@ -138,13 +139,14 @@ def events_table():
         f"<td>{escape(d.get('raw_location') or '')}</td>"
         f"<td>{escape(d.get('cleaned_location') or '')}</td>"
         f"<td>{escape(d.get('location_type') or '')}</td>"
+        f"<td>{'' if d.get('places_api_required') is None else d['places_api_required']}</td>"
         f"<td>{escape(d.get('neighborhood') or '')}</td>"
         f"<td>{escape(d.get('calendar') or '')}</td>"
         f"<td>{escape(d.get('source_type') or '')}</td>"
         f"<td>{escape(_source_label(d.get('source')))}</td>"
         f"<td>{_gcal_link_cell(d.get('gcal_link'))}</td></tr>"
         for d in docs
-    ) or '<tr><td colspan="12">No upcoming events</td></tr>'
+    ) or '<tr><td colspan="13">No upcoming events</td></tr>'
 
     return f"""<!doctype html>
 <html>
@@ -163,13 +165,14 @@ def events_table():
 </head>
 <body>
 <nav><a href="/">Events</a><a href="/sync-stats">Sync Stats</a><a href="/manual-location-overrides">Manual Location Overrides</a></nav>
-<p>Google Places API calls: {places_api_calls} &nbsp;|&nbsp; Saved database lookups: {places_cache_hits}</p>
+<p>Google Places API calls: {places_api_calls} &nbsp;|&nbsp; Saved database lookups: {places_cache_hits} &nbsp;|&nbsp; Already-valid addresses (no lookup needed): {places_format_bypasses}</p>
 <h1>Events (Next 3 Days)</h1>
 <p>Last scheduler run: {escape(last_run) or "unknown"}</p>
 <table>
   <thead>
     <tr><th>Event Title</th><th>Event Description</th><th>Start</th><th>End</th>
         <th>Raw Location</th><th>Cleaned Location</th><th>Location Type</th>
+        <th>Places API Required</th>
         <th>Neighborhood</th>
         <th>Source Google Calendar</th><th>Manual / Automatic</th><th>Event Source</th>
         <th>Calendar Link</th></tr>

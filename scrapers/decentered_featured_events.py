@@ -103,6 +103,7 @@ def _parse_page(html: str) -> List[Event]:
                 description=description,
                 source_url=url,
                 source=_SOURCE,
+                location_verified=True,
             ))
 
     except Exception as exc:
