@@ -8,8 +8,7 @@ import requests
 
 from app.location_cache_store import get_cached_location, save_location
 from app.location_stats_store import record_api_call, record_cache_hit
-from app.neighborhood_cache_store import get_cached_neighborhood, save_neighborhood
-from app.neighborhood_service import neighborhood_for
+from app.neighborhood_service import neighborhood_for, neighborhood_name_match
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +55,7 @@ _GENERIC_WORDS = {
 # Cache of this run's resolutions, keyed by raw string, layered in front of
 # the persistent Firestore cache to avoid a redundant DB read for a venue
 # string that repeats across many events in the same run.
-_cache: dict[str, tuple[str, str]] = {}
-
-# Same in-run layering as `_cache`, but for resolve_neighborhood, keyed by
-# exact address string.
-_neighborhood_cache: dict[str, str | None] = {}
+_cache: dict[str, tuple[str, str, tuple[float, float] | None]] = {}
 
 
 def _significant_words(text: str) -> set[str]:
@@ -130,53 +125,58 @@ def _places_text_search(query: str, api_key: str) -> dict | None:
     return results[0] if results else None
 
 
-def _resolve_via_places(raw: str) -> tuple[str, str]:
+def _resolve_via_places(raw: str) -> tuple[str, str, tuple[float, float] | None]:
     api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
     if not api_key:
         logger.error("GOOGLE_PLACES_API_KEY not configured; skipping location resolution")
-        return NOT_FOUND, "inexact"
+        return NOT_FOUND, "inexact", None
 
     result = _places_text_search(raw, api_key)
     if result is None:
-        return NOT_FOUND, "inexact"
+        return NOT_FOUND, "inexact", None
 
     location = (result.get("geometry") or {}).get("location") or {}
     try:
         lat, lon = float(location["lat"]), float(location["lng"])
     except (KeyError, TypeError, ValueError):
-        return NOT_FOUND, "inexact"
+        return NOT_FOUND, "inexact", None
     if not _within_bay_area(lat, lon):
-        return NOT_FOUND, "inexact"
+        return NOT_FOUND, "inexact", None
 
     formatted_address = result.get("formatted_address")
     if not formatted_address:
-        return NOT_FOUND, "inexact"
+        return NOT_FOUND, "inexact", None
 
     types = set(result.get("types") or [])
     if types & _AREA_TYPES or types & _LOW_PRECISION_TYPES:
-        return raw, "inexact"
+        return raw, "inexact", None
     if _is_city_level_address(formatted_address):
-        return raw, "inexact"
+        return raw, "inexact", None
     if not any(ch.isdigit() for ch in raw) and not _looks_related(raw, result):
         # `raw` has no street number to anchor the search, and this result
         # doesn't reference anything from it — likely an unrelated same-ish
         # named place (Places has to return something), not a real match.
-        return raw, "inexact"
-    return formatted_address, "exact"
+        return raw, "inexact", None
+    return formatted_address, "exact", (lat, lon)
 
 
-def resolve_location(raw_location: str | None) -> tuple[str, str]:
+def resolve_location(raw_location: str | None) -> tuple[str, str, tuple[float, float] | None]:
     """Resolve `raw_location` to a full address via Google Places, backed by a persistent cache.
 
-    Returns (cleaned_location, location_type). `location_type` is "inexact"
-    when the input names an area (neighborhood, city, etc.) rather than a
-    specific address/venue, when the only Places match is too coarse or too
-    unreliable to trust (see `_resolve_via_places`), or when nothing
-    resolves — in which case cleaned_location is NOT_FOUND. When inexact but
-    resolved, cleaned_location is `raw_location` itself (e.g. "Mission
-    District" stays "Mission District", not whatever place Google's search
-    happened to rank first). Otherwise it's "exact" and cleaned_location is
-    the full address Places returned.
+    Returns (cleaned_location, location_type, coords). `location_type` is
+    "inexact" when the input names an area (neighborhood, city, etc.)
+    rather than a specific address/venue, when the only Places match is too
+    coarse or too unreliable to trust (see `_resolve_via_places`), or when
+    nothing resolves — in which case cleaned_location is NOT_FOUND. When
+    inexact but resolved, cleaned_location is `raw_location` itself (e.g.
+    "Mission District" stays "Mission District", not whatever place
+    Google's search happened to rank first). Otherwise it's "exact" and
+    cleaned_location is the full address Places returned. `coords` is the
+    (lat, lon) Places resolved for an "exact" result — so a caller that also
+    wants the neighborhood (see `resolve_neighborhood`) can look it up
+    locally instead of geocoding the address a second time — or None for
+    every "inexact"/NOT_FOUND result and for a cache hit predating coords
+    being cached (retried next run, same as any other cache miss shape).
 
     Every distinct raw string is only ever sent to the Places API once: a
     successful resolution is saved to Firestore (location_cache_store) so
@@ -187,9 +187,9 @@ def resolve_location(raw_location: str | None) -> tuple[str, str]:
     """
     raw = (raw_location or "").strip()
     if not raw:
-        return NOT_FOUND, "inexact"
+        return NOT_FOUND, "inexact", None
     if raw.lower() in _VIRTUAL_LOCATION_STRINGS:
-        return NOT_FOUND, "inexact"
+        return NOT_FOUND, "inexact", None
     if raw in _cache:
         record_cache_hit()
         return _cache[raw]
@@ -203,53 +203,28 @@ def resolve_location(raw_location: str | None) -> tuple[str, str]:
     resolved = _resolve_via_places(raw)
     _cache[raw] = resolved
     if resolved[0] != NOT_FOUND:
-        save_location(raw, resolved[0], resolved[1])
+        save_location(raw, resolved[0], resolved[1], resolved[2])
     return resolved
 
 
-def resolve_neighborhood(address: str | None) -> str | None:
-    """Resolve an exact address to its San Francisco neighborhood, backed by a persistent cache.
+def resolve_neighborhood(
+    cleaned_location: str, location_type: str, coords: tuple[float, float] | None
+) -> str | None:
+    """Return the SF neighborhood for an already-resolved location, or None. Never calls an API.
 
-    Only meaningful for an "exact" (real address/venue) location — call this
-    with `cleaned_location` when `location_type == "exact"`, not with a raw
-    scraped string or an inexact/area location.
+    For an "exact" location, does a local point-in-polygon lookup against
+    `coords` — the lat/lon `resolve_location` already got from Places while
+    resolving it, so this costs no extra geocode. If `coords` is None (an
+    "exact" location that skipped Places entirely, e.g. a scraper-verified
+    address, or a cache hit from before coords were cached), returns None
+    rather than spending an API call just to find the neighborhood.
 
-    Geocodes `address` via Google Places (same API as `resolve_location`) to
-    get its lat/lng, then does a point-in-polygon lookup against the SF
-    neighborhood boundaries (app/neighborhood_service.py). Returns None both
-    when geocoding fails/is unconfigured and when the address is legitimately
-    outside every SF neighborhood (e.g. a venue in Oakland or Berkeley) — the
-    latter is cached permanently since it won't change; the former is not
-    cached, so it's retried next run.
+    For an "inexact" location, returns a neighborhood only when
+    `cleaned_location` itself names one of the 41 SF neighborhoods (e.g.
+    "Mission District") via `neighborhood_name_match` — pure string
+    matching, not geocoding. Any other area name (a city, "Online",
+    NOT_FOUND) returns None.
     """
-    address = (address or "").strip()
-    if not address:
-        return None
-    if address in _neighborhood_cache:
-        return _neighborhood_cache[address]
-
-    hit, cached = get_cached_neighborhood(address)
-    if hit:
-        record_cache_hit()
-        _neighborhood_cache[address] = cached
-        return cached
-
-    api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
-    if not api_key:
-        logger.error("GOOGLE_PLACES_API_KEY not configured; skipping neighborhood resolution")
-        return None
-
-    result = _places_text_search(address, api_key)
-    if result is None:
-        return None
-
-    location = (result.get("geometry") or {}).get("location") or {}
-    try:
-        lat, lon = float(location["lat"]), float(location["lng"])
-    except (KeyError, TypeError, ValueError):
-        return None
-
-    neighborhood = neighborhood_for(lat, lon)
-    _neighborhood_cache[address] = neighborhood
-    save_neighborhood(address, neighborhood)
-    return neighborhood
+    if location_type == "exact":
+        return neighborhood_for(*coords) if coords is not None else None
+    return neighborhood_name_match(cleaned_location)

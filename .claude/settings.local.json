@@ -50,7 +50,10 @@
       "Bash(python3 -m venv /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/b205dd4b-4a1e-4988-afe6-5876652abcb8/scratchpad/venv)",
       "Bash(/private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/b205dd4b-4a1e-4988-afe6-5876652abcb8/scratchpad/venv/bin/pip install *)",
       "Bash(/private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/b205dd4b-4a1e-4988-afe6-5876652abcb8/scratchpad/venv/bin/python3 -c ' *)",
-      "Bash(python3 -m py_compile app/neighborhood_service.py app/neighborhood_cache_store.py app/location_service.py app/sync_engine.py app/event_snapshot_store.py webapi/main.py)"
+      "Bash(python3 -m py_compile app/neighborhood_service.py app/neighborhood_cache_store.py app/location_service.py app/sync_engine.py app/event_snapshot_store.py webapi/main.py)",
+      "Bash(git -C /Users/alexroginski/Documents/stuff_to_do status --short)",
+      "Bash(python3 -m py_compile app/location_service.py app/location_cache_store.py app/neighborhood_service.py app/sync_engine.py app/calendar_service.py)",
+      "Bash(python3 -m py_compile app/sync_engine.py)"
     ]
   }
 }

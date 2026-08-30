@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import logging
+import re
 import time
 from datetime import datetime, timedelta
 from typing import List
@@ -79,18 +80,16 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
     if private_props.get("location_verified") == "true":
         # Scraper already hardcoded a known-correct full address for this
         # event (see Event.location_verified) — no need to spend a Places
-        # API call/cache entry re-resolving it.
-        cleaned_location, location_type = raw_location, "exact"
+        # API call/cache entry re-resolving it. No coords, so no
+        # neighborhood either — that would mean geocoding it after all.
+        cleaned_location, location_type, coords = raw_location, "exact", None
     elif private_props.get("location_inexact") == "true":
         # Scraper deliberately marked this location as approximate (see
         # Event.location_inexact) — skip Places and always report inexact.
-        cleaned_location, location_type = raw_location, "inexact"
+        cleaned_location, location_type, coords = raw_location, "inexact", None
     else:
-        cleaned_location, location_type = resolve_location(raw_location)
-    # Only an "exact" location names a real address/venue that a
-    # neighborhood boundary lookup is meaningful for — an "inexact" location
-    # is either an area name (e.g. "Mission District") or NOT_FOUND.
-    neighborhood = resolve_neighborhood(cleaned_location) if location_type == "exact" else None
+        cleaned_location, location_type, coords = resolve_location(raw_location)
+    neighborhood = resolve_neighborhood(cleaned_location, location_type, coords)
     return {
         "gcal_id": event["id"],
         "gcal_link": event.get("htmlLink") or "",
@@ -108,11 +107,24 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
     }
 
 
+# Titles that mean "not actually open to the public" — never pushed to the
+# calendar regardless of source. Matched case- and whitespace-insensitively
+# (see `_normalize_title`), so "private event", "PRIVATE  EVENT", and
+# "PrivateEvent" all match.
+_BLOCKED_TITLES = {"privateevent", "membersonly"}
+
+
+def _normalize_title(title: str) -> str:
+    return re.sub(r"\s+", "", title).lower()
+
+
 def _filter_events(events: List[Event], days: int = _LOOKAHEAD_DAYS) -> List[Event]:
     today = datetime.now(tz=_TZ).date()
     cutoff = today + timedelta(days=days)
     kept = []
     for e in events:
+        if _normalize_title(e.name) in _BLOCKED_TITLES:
+            continue
         event_date = e.start_time.astimezone(_TZ).date()
         if event_date < today:
             continue

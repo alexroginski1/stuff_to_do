@@ -29,8 +29,13 @@ def _doc_id(raw_location: str) -> str:
     return hashlib.sha256(normalized.encode()).hexdigest()
 
 
-def get_cached_location(raw_location: str) -> tuple[str, str] | None:
-    """Return a previously-saved (cleaned_location, location_type) for `raw_location`, or None on a cache miss.
+def get_cached_location(raw_location: str) -> tuple[str, str, tuple[float, float] | None] | None:
+    """Return a previously-saved (cleaned_location, location_type, coords) for `raw_location`, or None on a cache miss.
+
+    `coords` is None for a document written before coords were cached
+    alongside the location — treated the same as "unknown", not re-fetched,
+    since resolving it would cost the very API call this cache exists to
+    avoid; it's simply left out of the neighborhood lookup for that entry.
 
     Also returns None (rather than raising) if Firestore is unreachable, so
     callers always fall back to a fresh Google Places lookup.
@@ -47,17 +52,27 @@ def get_cached_location(raw_location: str) -> tuple[str, str] | None:
     location_type = data.get("location_type")
     if not cleaned_location or not location_type:
         return None
-    return cleaned_location, location_type
+    lat, lon = data.get("lat"), data.get("lon")
+    coords = (lat, lon) if isinstance(lat, (int, float)) and isinstance(lon, (int, float)) else None
+    return cleaned_location, location_type, coords
 
 
-def save_location(raw_location: str, cleaned_location: str, location_type: str) -> None:
-    """Persist a resolved (cleaned_location, location_type) for `raw_location`, keyed for reuse by every future run."""
+def save_location(
+    raw_location: str,
+    cleaned_location: str,
+    location_type: str,
+    coords: tuple[float, float] | None,
+) -> None:
+    """Persist a resolved (cleaned_location, location_type, coords) for `raw_location`, keyed for reuse by every future run."""
     try:
-        _get_client().collection(_COLLECTION).document(_doc_id(raw_location)).set({
+        doc = {
             "raw_location": raw_location,
             "cleaned_location": cleaned_location,
             "location_type": location_type,
             "resolved_at": firestore.SERVER_TIMESTAMP,
-        })
+        }
+        if coords is not None:
+            doc["lat"], doc["lon"] = coords
+        _get_client().collection(_COLLECTION).document(_doc_id(raw_location)).set(doc)
     except Exception as exc:
         logger.error(f"Failed to write location cache for {raw_location!r}: {exc}")

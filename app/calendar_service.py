@@ -162,7 +162,7 @@ def _resolve_event_location(event: Event) -> str:
     raw = event.location or ""
     if event.location_verified or event.location_inexact or not raw:
         return raw
-    cleaned, _ = resolve_location(raw)
+    cleaned, _, _ = resolve_location(raw)
     return raw if cleaned == NOT_FOUND else cleaned
 
 
