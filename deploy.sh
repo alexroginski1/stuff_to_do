@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy stuff-to-do as a Cloud Run Job scheduled at 3 AM and 3 PM Pacific.
+# Deploy stuff-to-do as a Cloud Run Job scheduled at 12 AM and 12 PM Pacific.
 #
 # Prerequisites:
 #   - gcloud CLI installed and authenticated (gcloud auth login)
@@ -171,8 +171,8 @@ gcloud run jobs add-iam-policy-binding "$JOB_NAME" \
   --region "$REGION" \
   --project "$PROJECT_ID"
 
-# ── Cloud Scheduler: 3 AM and 3 PM Pacific ───────────────────────────────────
-echo "==> Creating/updating Cloud Scheduler job (3 AM / 3 PM Pacific)..."
+# ── Cloud Scheduler: 12 AM and 12 PM Pacific ─────────────────────────────────
+echo "==> Creating/updating Cloud Scheduler job (12 AM / 12 PM Pacific)..."
 JOB_URI="https://$REGION-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/$PROJECT_ID/jobs/$JOB_NAME:run"
 
 if gcloud scheduler jobs describe "$JOB_NAME-every-6h" \
@@ -183,7 +183,7 @@ else
 fi
 
 gcloud scheduler jobs "$SCHED_VERB" http "$JOB_NAME-every-6h" \
-  --schedule="0 3,15 * * *" \
+  --schedule="0 0,12 * * *" \
   --time-zone="America/Los_Angeles" \
   --uri="$JOB_URI" \
   --message-body='{}' \
@@ -193,7 +193,7 @@ gcloud scheduler jobs "$SCHED_VERB" http "$JOB_NAME-every-6h" \
   --project "$PROJECT_ID"
 
 # ── Kick off a run immediately, every time this script runs ─────────────────
-# Cloud Scheduler only fires at the next 3 AM/3 PM Pacific boundary, which
+# Cloud Scheduler only fires at the next 12 AM/12 PM Pacific boundary, which
 # could be up to 12 hours away, so trigger the job directly here too.
 echo "==> Executing $JOB_NAME now..."
 if [ "$DELETE_ALL_EVENTS_BEFORE_PUSH" = true ]; then
@@ -204,7 +204,7 @@ else
   gcloud run jobs execute "$JOB_NAME" --region "$REGION" --project "$PROJECT_ID"
 fi
 echo ""
-echo "Done! Run started now; subsequent runs happen automatically at 3 AM and 3 PM Pacific."
+echo "Done! Run started now; subsequent runs happen automatically at 12 AM and 12 PM Pacific."
 echo ""
 echo "If you haven't already, share each calendar in config/settings.py's"
 echo "CALENDARS with $JOB_SA, granting 'Make changes to events'."

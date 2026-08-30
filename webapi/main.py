@@ -17,6 +17,7 @@ _COLLECTION = "sync_stats"
 _EVENTS_COLLECTION = "event_snapshot"
 _LOCATION_STATS_COLLECTION = "location_api_stats"
 _LOCATION_STATS_DOC = "totals"
+_MANUAL_OVERRIDES_COLLECTION = "manual_location_overrides"
 _TZ = ZoneInfo("America/Los_Angeles")
 
 # Event descriptions come from scraped third-party event pages and manually
@@ -161,7 +162,7 @@ def events_table():
 </style>
 </head>
 <body>
-<nav><a href="/">Events</a><a href="/sync-stats">Sync Stats</a></nav>
+<nav><a href="/">Events</a><a href="/sync-stats">Sync Stats</a><a href="/manual-location-overrides">Manual Location Overrides</a></nav>
 <p>Google Places API calls: {places_api_calls} &nbsp;|&nbsp; Saved database lookups: {places_cache_hits}</p>
 <h1>Events (Next 3 Days)</h1>
 <p>Last scheduler run: {escape(last_run) or "unknown"}</p>
@@ -226,12 +227,68 @@ def stats_table():
 </style>
 </head>
 <body>
-<nav><a href="/">Events</a><a href="/sync-stats">Sync Stats</a></nav>
+<nav><a href="/">Events</a><a href="/sync-stats">Sync Stats</a><a href="/manual-location-overrides">Manual Location Overrides</a></nav>
 <h1>Sync Stats</h1>
 <table>
   <thead>
     <tr><th>Job Datetime</th><th>Calendar</th><th>Source</th>
         <th>Inserted</th><th>Deleted</th><th>Skipped</th><th>Errors</th></tr>
+  </thead>
+  <tbody>
+    {body_rows}
+  </tbody>
+</table>
+</body>
+</html>"""
+
+
+@app.get("/manual-location-overrides")
+def manual_location_overrides_table():
+    """Render every raw location the inexact_match_manual_update sheet has corrected to an exact address.
+
+    Logged by app.location_stats_store.record_manual_override whenever
+    app.location_service.resolve_location finds a match in the sheet
+    (app/inexact_match_override_store.py) instead of falling back to a
+    Places API call.
+    """
+    limit = _parse_limit(default=500, max_value=2000)
+
+    query = (
+        _client.collection(_MANUAL_OVERRIDES_COLLECTION)
+        .order_by("converted_at", direction=firestore.Query.DESCENDING)
+        .limit(limit)
+    )
+    docs = [doc.to_dict() for doc in query.stream()]
+
+    body_rows = "\n".join(
+        f"<tr><td>{escape(d.get('raw_location') or '')}</td>"
+        f"<td>{escape(d.get('exact_location') or '')}</td>"
+        f"<td>{_format_pdt(d.get('converted_at'))}</td></tr>"
+        for d in docs
+    ) or '<tr><td colspan="3">No manual overrides applied yet</td></tr>'
+
+    return f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Stuff To Do — Manual Location Overrides</title>
+<style>
+  body {{ font-family: -apple-system, sans-serif; margin: 2rem; color: #222; }}
+  table {{ border-collapse: collapse; width: 100%; max-width: 960px; }}
+  th, td {{ border: 1px solid #ccc; padding: 0.4rem 0.8rem; text-align: left; vertical-align: top; }}
+  td {{ white-space: pre-wrap; }}
+  th {{ background: #f4f4f4; }}
+  tr:nth-child(even) {{ background: #fafafa; }}
+  nav a {{ margin-right: 1rem; }}
+</style>
+</head>
+<body>
+<nav><a href="/">Events</a><a href="/sync-stats">Sync Stats</a><a href="/manual-location-overrides">Manual Location Overrides</a></nav>
+<h1>Manual Location Overrides</h1>
+<p>Raw locations resolved via the <code>inexact_match_manual_update</code> sheet instead of the Google Places API.</p>
+<table>
+  <thead>
+    <tr><th>Raw Location</th><th>Exact Location</th><th>Converted At</th></tr>
   </thead>
   <tbody>
     {body_rows}

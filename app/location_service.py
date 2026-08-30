@@ -6,8 +6,9 @@ import re
 
 import requests
 
+from app.inexact_match_override_store import find_override
 from app.location_cache_store import get_cached_location, save_location
-from app.location_stats_store import record_api_call, record_cache_hit
+from app.location_stats_store import record_api_call, record_cache_hit, record_manual_override
 from app.neighborhood_service import neighborhood_for, neighborhood_name_match
 
 logger = logging.getLogger(__name__)
@@ -206,6 +207,15 @@ def resolve_location(raw_location: str | None) -> tuple[str, str, tuple[float, f
     key configured, network/HTTP error) is left uncached, so a transient
     problem doesn't permanently poison the cache; that case alone is retried
     next run.
+
+    Before an "inexact" answer (freshly resolved, or already sitting in the
+    cache from a previous run) is returned, it's checked against the
+    inexact_match_manual_update sheet (app/inexact_match_override_store.py)
+    — a manually-curated list of raw strings Places can't resolve well,
+    mapped to the correct address. A match there is treated as "exact",
+    saved to the location cache like any other resolution, and logged via
+    record_manual_override for the /manual-location-overrides page — without
+    ever calling Places, since the sheet's answer is already known-good.
     """
     raw = (raw_location or "").strip()
     if not raw:
@@ -217,6 +227,19 @@ def resolve_location(raw_location: str | None) -> tuple[str, str, tuple[float, f
         return _cache[raw]
 
     cached = get_cached_location(raw)
+    if cached is not None and cached[1] != "inexact":
+        _cache[raw] = cached
+        record_cache_hit()
+        return cached
+
+    override = find_override(raw)
+    if override is not None:
+        resolved = (override, "exact", None)
+        _cache[raw] = resolved
+        save_location(raw, override, "exact", None)
+        record_manual_override(raw, override)
+        return resolved
+
     if cached is not None:
         _cache[raw] = cached
         record_cache_hit()
