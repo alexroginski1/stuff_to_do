@@ -53,7 +53,17 @@
       "Bash(python3 -m py_compile app/neighborhood_service.py app/neighborhood_cache_store.py app/location_service.py app/sync_engine.py app/event_snapshot_store.py webapi/main.py)",
       "Bash(git -C /Users/alexroginski/Documents/stuff_to_do status --short)",
       "Bash(python3 -m py_compile app/location_service.py app/location_cache_store.py app/neighborhood_service.py app/sync_engine.py app/calendar_service.py)",
-      "Bash(python3 -m py_compile app/sync_engine.py)"
+      "Bash(python3 -m py_compile app/sync_engine.py)",
+      "Bash(grep -n \"price\\\\|Price\\\\|\\\\\\\\$\" scrapers/four_star_theater.py scrapers/setup_comedy.py scrapers/bats_improv.py scrapers/best_medicine_comedy.py)",
+      "Bash(xargs grep -l \"\\\\\\\\$\")",
+      "Bash(grep -n \"\\\\\\\\$\" scrapers/themoth.py scrapers/mellow_nights.py scrapers/arch_art_supplies.py)",
+      "WebFetch(domain:offbeatsf.com)",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://offbeatsf.com/events/\" -o /private/tmp/claude-501/-Users-alexroginski-Documents-stuff-to-do/36a46ecc-6821-4657-94b6-cf8075247d6a/scratchpad/offbeat.html)",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://offbeatsf.com/wp-json/tribe/events/v1/events?per_page=5\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://offbeatsf.com/wp-json/tribe/events/v1/events?per_page=1\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://offbeatsf.com/wp-json/tribe/events/v1/events?per_page=1&start_date=2026-08-29\")",
+      "Bash(curl -sI -A \"Mozilla/5.0\" \"https://offbeatsf.com/wp-json/tribe/events/v1/events?per_page=1\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://offbeatsf.com/wp-json/tribe/events/v1/events?per_page=10&page=1\")"
     ]
   }
 }
