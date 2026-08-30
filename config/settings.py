@@ -119,6 +119,13 @@ SOURCES: dict[str, dict] = {
         "calendar": "SF Community",
         "enabled": True,
     },
+    "bayareaopenmics": {
+        "label": "Bay Area Open Mics",
+        "emoji": "🎤",
+        "display_url": "https://bayareaopenmics.com/sf.html",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
     "the_sf_nook": {
         "label": "The SF Nook: SF Event Space",
         "location": "Civic Center on Market St",
