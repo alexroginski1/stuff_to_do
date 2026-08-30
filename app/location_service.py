@@ -6,6 +6,7 @@ import re
 
 import requests
 
+from app.census_geocode_service import geocode_address
 from app.inexact_match_override_store import find_override
 from app.location_cache_store import get_cached_location, save_location
 from app.location_stats_store import (
@@ -109,6 +110,14 @@ _GENERIC_WORDS = {
 # the persistent Firestore cache to avoid a redundant DB read for a venue
 # string that repeats across many events in the same run.
 _cache: dict[str, tuple[str, str, tuple[float, float] | None]] = {}
+
+# Cap on how many addresses get a fresh Census Bureau geocode in a single
+# run (see `_geocode_exact_location`), so a large backlog of never-before-
+# geocoded exact addresses can't blow out the scheduler job's time budget.
+# Whatever's left over is picked up by later runs, same as any other
+# incremental backfill.
+_MAX_CENSUS_LOOKUPS_PER_RUN = 60
+_census_lookups_this_run = 0
 
 
 def _significant_words(text: str) -> set[str]:
@@ -360,21 +369,50 @@ def location_requires_places(raw_location: str | None) -> bool:
 def resolve_neighborhood(
     cleaned_location: str, location_type: str, coords: tuple[float, float] | None
 ) -> str | None:
-    """Return the SF neighborhood for an already-resolved location, or None. Never calls an API.
+    """Return the SF neighborhood for an already-resolved location, or None.
 
-    For an "exact" location, does a local point-in-polygon lookup against
-    `coords` — the lat/lon `resolve_location` already got from Places while
-    resolving it, so this costs no extra geocode. If `coords` is None (an
-    "exact" location that skipped Places entirely, e.g. a scraper-verified
-    address, or a cache hit from before coords were cached), returns None
-    rather than spending an API call just to find the neighborhood.
+    For an "exact" location with `coords` already known (a live Places call
+    got them while resolving it), does a local point-in-polygon lookup — no
+    extra geocode needed. When `coords` is None — an "exact" location that
+    skipped Places entirely (a complete address as scraped, a scraper-
+    verified address, or a cache hit from before coords were cached) — falls
+    back to `_geocode_exact_location`, a free Census Bureau geocode of
+    `cleaned_location` itself, capped per run and cached so the same address
+    is never geocoded twice.
 
     For an "inexact" location, returns a neighborhood only when
-    `cleaned_location` itself names one of the 41 SF neighborhoods (e.g.
-    "Mission District") via `neighborhood_name_match` — pure string
-    matching, not geocoding. Any other area name (a city, "Online",
-    NOT_FOUND) returns None.
+    `cleaned_location` names one of the 41 SF neighborhoods (e.g. "Mission
+    District", or "North Beach, San Francisco, CA, USA") via
+    `neighborhood_name_match` — pure string matching, never geocoding. Any
+    other area name (a city, "Online", NOT_FOUND) returns None.
     """
     if location_type == "exact":
+        if coords is None:
+            coords = _geocode_exact_location(cleaned_location)
         return neighborhood_for(*coords) if coords is not None else None
     return neighborhood_name_match(cleaned_location)
+
+
+def _geocode_exact_location(cleaned_location: str) -> tuple[float, float] | None:
+    """Get (lat, lon) for a known-good full address that has no Places-derived coords.
+
+    Backed by the same Firestore location cache `resolve_location` uses, but
+    keyed on `cleaned_location` itself — a stable, complete address string —
+    rather than the raw scraped string `resolve_location` keys on, so this
+    never collides with or overwrites a real Places resolution.
+
+    Capped at `_MAX_CENSUS_LOOKUPS_PER_RUN` fresh Census lookups per run:
+    once the cap is hit, an address with no cached coords yet just returns
+    None for this run and is retried on the next one.
+    """
+    global _census_lookups_this_run
+    cached = get_cached_location(cleaned_location)
+    if cached is not None and cached[2] is not None:
+        return cached[2]
+    if _census_lookups_this_run >= _MAX_CENSUS_LOOKUPS_PER_RUN:
+        return None
+    _census_lookups_this_run += 1
+    coords = geocode_address(cleaned_location)
+    if coords is not None:
+        save_location(cleaned_location, cleaned_location, "exact", coords)
+    return coords

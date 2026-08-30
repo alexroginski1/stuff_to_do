@@ -85,8 +85,9 @@ def _snapshot_record(calendar_name: str, event: dict) -> dict | None:
     if private_props.get("location_verified") == "true":
         # Scraper already hardcoded a known-correct full address for this
         # event (see Event.location_verified) — no need to spend a Places
-        # API call/cache entry re-resolving it. No coords, so no
-        # neighborhood either — that would mean geocoding it after all.
+        # API call/cache entry re-resolving it. No coords from here, but
+        # resolve_neighborhood() below still finds the neighborhood via a
+        # free Census Bureau geocode of the address itself.
         cleaned_location, location_type, coords = raw_location, "exact", None
     elif private_props.get("location_inexact") == "true":
         # Scraper deliberately marked this location as approximate (see

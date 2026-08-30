@@ -72,11 +72,21 @@ def neighborhood_name_match(text: str) -> str | None:
     Castro" for "Castro/Upper Market" — won't match. Meant for an "inexact"
     location string that names an area rather than a specific address (see
     `location_service.resolve_location`).
+
+    Also tries just the text before the first comma, so a Places-style
+    "North Beach, San Francisco, CA, USA" still matches "North Beach" even
+    though the full string doesn't. Only the first segment is tried (not a
+    general substring search) so an unrelated landmark name that happens to
+    start with a neighborhood word — "Mission Street" say — can't produce a
+    false match.
     """
     global _name_lookup
     if _name_lookup is None:
         _name_lookup = {_normalize(name): name for name, _ in _load_boundaries()}
     normalized = _normalize(text)
-    if not normalized:
-        return None
-    return _name_lookup.get(normalized)
+    if normalized and normalized in _name_lookup:
+        return _name_lookup[normalized]
+    first_segment = _normalize(text.split(",", 1)[0])
+    if first_segment:
+        return _name_lookup.get(first_segment)
+    return None

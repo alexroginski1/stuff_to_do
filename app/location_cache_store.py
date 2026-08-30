@@ -33,9 +33,10 @@ def get_cached_location(raw_location: str) -> tuple[str, str, tuple[float, float
     """Return a previously-saved (cleaned_location, location_type, coords) for `raw_location`, or None on a cache miss.
 
     `coords` is None for a document written before coords were cached
-    alongside the location — treated the same as "unknown", not re-fetched,
-    since resolving it would cost the very API call this cache exists to
-    avoid; it's simply left out of the neighborhood lookup for that entry.
+    alongside the location — treated the same as "unknown", not re-fetched
+    here (that would cost the very API call this cache exists to avoid). A
+    caller resolving a neighborhood for an "exact" result with no coords
+    still has a path forward: see `location_service._geocode_exact_location`.
 
     Also returns None (rather than raising) if Firestore is unreachable, so
     callers always fall back to a fresh Google Places lookup.
