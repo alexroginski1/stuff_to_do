@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
 import re
 from datetime import datetime, timezone
 from typing import List, Optional
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 import requests
@@ -309,6 +311,67 @@ def fetch_mobilize_org_events(
             break
         page += 1
 
+    return events
+
+
+# ---------------------------------------------------------------------------
+# Squarespace Events collection helpers
+# ---------------------------------------------------------------------------
+
+_SQUARESPACE_TZ = ZoneInfo("America/Los_Angeles")
+
+
+def _squarespace_location(loc: Optional[dict]) -> Optional[str]:
+    if not loc:
+        return None
+    parts = [loc.get("addressLine1") or loc.get("addressTitle"), loc.get("addressLine2")]
+    return ", ".join([p for p in parts if p]) or None
+
+
+def _squarespace_dt(ms: Optional[int]) -> Optional[datetime]:
+    if not ms:
+        return None
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).astimezone(_SQUARESPACE_TZ)
+
+
+def fetch_squarespace_events(collection_url: str, source: str) -> List["Event"]:
+    """Fetch upcoming events from a Squarespace Events-collection page via its
+    built-in `?format=json` endpoint (every Squarespace collection page
+    supports this; undocumented but stable)."""
+    from app.event_model import Event
+
+    try:
+        raw = fetch_html(f"{collection_url.rstrip('/')}?format=json")
+        data = json.loads(raw)
+    except Exception as exc:
+        logger.warning(f"[{source}] fetch failed: {exc}")
+        return []
+
+    base = urlsplit(collection_url)
+    events: List[Event] = []
+    for item in data.get("upcoming", []):
+        name = item.get("title")
+        start = _squarespace_dt(item.get("startDate"))
+        if not name or not start:
+            continue
+
+        full_url = item.get("fullUrl")
+        source_url = f"{base.scheme}://{base.netloc}{full_url}" if full_url else collection_url
+
+        excerpt = item.get("excerpt")
+        description = BeautifulSoup(excerpt, "html.parser").get_text("\n", strip=True) if excerpt else None
+
+        events.append(Event(
+            name=html.unescape(name).strip(),
+            start_time=start,
+            end_time=_squarespace_dt(item.get("endDate")),
+            location=_squarespace_location(item.get("location")),
+            description=description or None,
+            source_url=source_url,
+            source=source,
+        ))
+
+    logger.info(f"[{source}] parsed {len(events)} events")
     return events
 
 
