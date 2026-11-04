@@ -25,7 +25,6 @@ CALENDAR_LINKS = {
     "SF Shows": "88eb45ae7b30e306d2d467e36f616db20abf74008d161ed225419e4e2a4b9538@group.calendar.google.com",
     "SF Library": "200e6e3f56fe5cf18e1cc18aa256ce255361192daca83cdf25a2ce012e45629f@group.calendar.google.com",
     "SF Volunteering": "46a71c6b79cda3b1a0489e0f0ba398d495133dc5a6bcc156ed57a4eaffba0a2a@group.calendar.google.com",
-    "SF Music": "44984441a9bedb4f5317af579bfa6b0624a41f02b19a05df6ed7875187416892@group.calendar.google.com",
 }
 
 
@@ -1034,7 +1033,15 @@ SOURCES: dict[str, dict] = {
         "label": "Offbeat SF",
         "emoji": "🎵",
         "display_url": "https://offbeatsf.com/events/",
-        "calendar": "SF Music",
+        "calendar": "SF Shows",
+        "enabled": True,
+    },
+    "bayareashows": {
+        "label": "Bay Area Shows",
+        "emoji": "🎸",
+        "display_url": "https://bayareashows.org/",
+        "calendar": "SF Shows",
+        "attribution": 'Event parsed from <a href="https://bayareashows.org/">bayareashows.org</a>, check it out!',
         "enabled": True,
     },
     "civic_joy_fund": {
