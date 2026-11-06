@@ -28,8 +28,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from calendar import monthrange
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 from zoneinfo import ZoneInfo
@@ -46,6 +45,7 @@ _EVENTS_API = "https://wp.presidio.gov/wp-json/tribe/events/v1/events"
 _EVENT_PAGE_BASE = "https://presidio.gov/explore/events/"
 _TZ = ZoneInfo("America/Los_Angeles")
 _MAX_PAGES = 10
+_HORIZON_DAYS = 16
 
 # Fixed pin near the geographic center of the park (Main Post) — see module
 # docstring for why events aren't given per-venue addresses.
@@ -71,14 +71,15 @@ def _parse_local_dt(s: str) -> Optional[datetime]:
 
 
 def _fetch_occurrences() -> List[dict]:
-    """List every upcoming event occurrence through the end of the current
-    month via the Tribe Events REST API. Unbounded (no end_date filter) this
+    """List every upcoming event occurrence over the next _HORIZON_DAYS days
+    via the Tribe Events REST API. Unbounded (no end_date filter) this
     endpoint returns 1500+ occurrences stretching years into the future
-    because of daily recurring events, so the window keeps this to the
-    current month, mirroring the site's own "Featured Events" + current-month
-    calendar section rather than pulling far-future occurrences."""
+    because of daily recurring events, so the window is kept to a small
+    buffer over the sync engine's 14-day lookahead (app/sync_engine.py
+    _LOOKAHEAD_DAYS). A rolling window rather than "end of this month" so
+    late-month runs still see two full weeks ahead."""
     today = datetime.now(tz=_TZ).date()
-    end = today.replace(day=monthrange(today.year, today.month)[1])
+    end = today + timedelta(days=_HORIZON_DAYS)
 
     occurrences: List[dict] = []
     page = 1

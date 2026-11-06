@@ -26,7 +26,7 @@ _TZ = ZoneInfo("America/Los_Angeles")
 # the sync engine's lookahead window (app/sync_engine.py _LOOKAHEAD_DAYS)
 # plus a buffer, so a run only ever has to page through a handful of pages.
 _PER_PAGE = 50
-_HORIZON_DAYS = 9
+_HORIZON_DAYS = 16
 _MAX_PAGES = 10
 
 

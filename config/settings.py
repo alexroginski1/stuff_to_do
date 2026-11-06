@@ -1045,10 +1045,26 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "civic_joy_fund": {
-        "label": "Civic Joy Fund: Community Service",
+        "label": "Civic Joy Fund: Volunteering",
         "emoji": "🧹",
-        "display_url": "https://www.mobilize.us/civicjoyfund/?tag_ids=546",
+        "display_url": "https://www.mobilize.us/civicjoyfund/",
         "calendar": "SF Volunteering",
+        "enabled": True,
+    },
+    "civic_joy_fund_events": {
+        "label": "Civic Joy Fund: Block Parties & Night Markets",
+        "emoji": "🎪",
+        "display_url": "https://civicjoyfund.org/events",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "thrive_city": {
+        "label": "Thrive City",
+        "location": "Mission Bay (Chase Center)",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=1+Warriors+Way%2C+San+Francisco%2C+CA+94158",
+        "emoji": "🌇",
+        "display_url": "https://www.eventbrite.com/o/thrive-city-36308481623",
+        "calendar": "SF Community",
         "enabled": True,
     },
 }

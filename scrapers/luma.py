@@ -3,8 +3,9 @@ from __future__ import annotations
 import html
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from pathlib import Path
@@ -18,6 +19,13 @@ _SOURCE = Path(__file__).stem
 _URL = "https://api2.luma.com/discover/get-paginated-events?discover_place_api_id=discplace-BDj7GNbGlsF7Cka&pagination_limit=50"
 _EVENT_URL = "https://api2.luma.com/event/get?event_api_id={api_id}"
 _TZ = ZoneInfo("America/Los_Angeles")
+# Luma's list endpoints are cursor-paginated (`has_more` + `next_cursor`,
+# passed back as `pagination_cursor`) and sorted by start time. A single page
+# only reaches ~1 week out on busy calendars, so keep following the cursor
+# until a page reaches past the sync engine's 14-day lookahead
+# (app/sync_engine.py _LOOKAHEAD_DAYS) plus a small buffer.
+_HORIZON_DAYS = 16
+_MAX_PAGES = 10
 
 
 def _parse_dt(s: Optional[str]) -> Optional[datetime]:
@@ -109,10 +117,10 @@ def _extract_json(html: str) -> dict:
     return json.loads(html)
 
 
-def _parse_events(data: dict, source: str, sf_only: bool = False) -> List[Event]:
+def _parse_events(entries: List[dict], source: str, sf_only: bool = False) -> List[Event]:
     results: List[Event] = []
+    horizon = datetime.now(tz=_TZ) + timedelta(days=_HORIZON_DAYS)
 
-    entries = data.get("entries", [])
     for entry in entries:
         ev = entry.get("event") or {}
         geo = ev.get("geo_address_info") or {}
@@ -129,6 +137,9 @@ def _parse_events(data: dict, source: str, sf_only: bool = False) -> List[Event]
         url_slug = ev.get("url")
 
         if not name or not start:
+            continue
+        # Past the lookahead — skip before spending a description API call.
+        if start > horizon:
             continue
 
         url = f"https://luma.com/{url_slug}" if url_slug else ""
@@ -153,16 +164,34 @@ def _parse_events(data: dict, source: str, sf_only: bool = False) -> List[Event]
     return results
 
 
-def fetch_luma_events(url: str, source: str, sf_only: bool = False) -> List[Event]:
-    try:
-        raw = fetch_html(url)
-    except Exception as exc:
-        logger.warning(f"[{source}] fetch failed: {exc}")
-        return []
+def _fetch_entries(url: str, source: str) -> List[dict]:
+    """Follow Luma's cursor pagination until the results pass the horizon."""
+    horizon = datetime.now(tz=_TZ) + timedelta(days=_HORIZON_DAYS)
+    entries: List[dict] = []
+    cursor: Optional[str] = None
+    for page in range(1, _MAX_PAGES + 1):
+        page_url = f"{url}&pagination_cursor={quote(cursor)}" if cursor else url
+        try:
+            data = _extract_json(fetch_html(page_url))
+        except Exception as exc:
+            logger.warning(f"[{source}] fetch failed on page {page}: {exc}")
+            break
+        page_entries = data.get("entries", [])
+        entries.extend(page_entries)
 
+        cursor = data.get("next_cursor")
+        if not data.get("has_more") or not cursor or not page_entries:
+            break
+        last_start = _parse_dt((page_entries[-1].get("event") or {}).get("start_at"))
+        if last_start and last_start > horizon:
+            break
+    return entries
+
+
+def fetch_luma_events(url: str, source: str, sf_only: bool = False) -> List[Event]:
+    entries = _fetch_entries(url, source)
     try:
-        data = _extract_json(raw)
-        events = _parse_events(data, source, sf_only=sf_only)
+        events = _parse_events(entries, source, sf_only=sf_only)
         logger.info(f"[{source}] parsed {len(events)} events")
         return events
     except Exception as exc:

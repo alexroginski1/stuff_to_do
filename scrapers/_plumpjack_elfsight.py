@@ -10,7 +10,7 @@ from __future__ import annotations
 # rule rather than expanded dates — a weekly happy hour is one record with
 # `repeatPeriod: "weeklyOn"` and a weekday code, not one record per future
 # Tuesday. So this module filters to one venue's location id and computes
-# each event's next occurrence itself.
+# each event's upcoming occurrences itself.
 
 import json
 import logging
@@ -31,10 +31,13 @@ _TZ = ZoneInfo("America/Los_Angeles")
 
 _WEEKDAY_CODES = {"mo": 0, "tu": 1, "we": 2, "th": 3, "fr": 4, "sa": 5, "su": 6}
 
-# How far out to search for a next occurrence before giving up (guards
-# against an infinite loop if every candidate date is skipped).
-_MAX_LOOKAHEAD_WEEKS = 52
+# How far out to search for an annual event's next occurrence before giving
+# up (guards against an infinite loop if every candidate date is skipped).
 _MAX_LOOKAHEAD_YEARS = 5
+# Weekly rules are expanded into every occurrence within this many days — a
+# small buffer over the sync engine's 14-day lookahead
+# (app/sync_engine.py _LOOKAHEAD_DAYS).
+_HORIZON_DAYS = 16
 
 
 def _html_to_text(html: Optional[str]) -> Optional[str]:
@@ -78,22 +81,27 @@ def _still_relevant(start: date, duration: Optional[timedelta], today: date) -> 
     return (end or start) >= today
 
 
-def _next_weekly_start(
+def _weekly_starts(
     start: date, weekday_codes: List[str], interval: int, skip: set[date], today: date
-) -> Optional[date]:
+) -> List[date]:
+    """Every occurrence of a weekly rule from today through the lookahead
+    horizon (not just the next one), so a weekly happy hour shows up in each
+    week of the sync engine's 14-day window."""
     weekdays = {_WEEKDAY_CODES[c] for c in weekday_codes if c in _WEEKDAY_CODES}
     if not weekdays:
-        return None
+        return []
     interval = max(interval, 1)
+    horizon = today + timedelta(days=_HORIZON_DAYS)
 
-    candidate = min(start, today)
-    for _ in range(_MAX_LOOKAHEAD_WEEKS * 7 + 7):
-        if candidate >= today and candidate.weekday() in weekdays:
+    starts: List[date] = []
+    candidate = max(start, today)
+    while candidate <= horizon:
+        if candidate.weekday() in weekdays:
             weeks_since_start = (candidate - start).days // 7
             if weeks_since_start % interval == 0 and candidate not in skip:
-                return candidate
+                starts.append(candidate)
         candidate += timedelta(days=1)
-    return None
+    return starts
 
 
 def _next_annual_start(
@@ -112,55 +120,54 @@ def _next_annual_start(
     return None
 
 
-def _occurrence(event: dict, today: date, source: str) -> Optional[tuple[datetime, Optional[datetime]]]:
+def _occurrences(event: dict, today: date, source: str) -> List[tuple[datetime, Optional[datetime]]]:
     start = _parse_dt(event.get("start"))
     end = _parse_dt(event.get("end"))
     if not start:
-        return None
+        return []
     duration = (end - start) if end else None
     skip = _skip_dates(event)
 
     period = event.get("repeatPeriod")
     if period == "noRepeat" or period is None:
-        occurrence_start = start.date() if _still_relevant(start.date(), duration, today) else None
+        starts = [start.date()] if _still_relevant(start.date(), duration, today) else []
     elif period == "weeklyOn":
-        occurrence_start = _next_weekly_start(
+        starts = _weekly_starts(
             start.date(), event.get("repeatWeeklyOnDays") or [], event.get("repeatInterval") or 1, skip, today
         )
     elif period == "annuallyOn":
-        occurrence_start = _next_annual_start(start.date(), duration, skip, today)
+        annual = _next_annual_start(start.date(), duration, skip, today)
+        starts = [annual] if annual else []
     else:
         logger.warning(f"[{source}] unsupported repeatPeriod {period!r} for {event.get('name')!r}, skipping")
-        return None
+        return []
 
-    if occurrence_start is None:
-        return None
+    result = []
+    for occurrence_start in starts:
+        occurrence_start_dt = datetime.combine(occurrence_start, start.time(), tzinfo=_TZ)
+        occurrence_end_dt = occurrence_start_dt + duration if duration else None
+        result.append((occurrence_start_dt, occurrence_end_dt))
+    return result
 
-    occurrence_start_dt = datetime.combine(occurrence_start, start.time(), tzinfo=_TZ)
-    occurrence_end_dt = occurrence_start_dt + duration if duration else None
-    return occurrence_start_dt, occurrence_end_dt
 
-
-def _parse_event(event: dict, today: date, address: str, calendar_url: str, source: str) -> Optional[Event]:
+def _parse_event(event: dict, today: date, address: str, calendar_url: str, source: str) -> List[Event]:
     name = event.get("name")
     if not name:
-        return None
+        return []
 
-    occurrence = _occurrence(event, today, source)
-    if not occurrence:
-        return None
-    start_time, end_time = occurrence
-
-    return Event(
-        name=name.strip(),
-        start_time=start_time,
-        end_time=end_time,
-        location=address,
-        description=_html_to_text(event.get("description")),
-        source_url=calendar_url,
-        source=source,
-        location_verified=True,
-    )
+    return [
+        Event(
+            name=name.strip(),
+            start_time=start_time,
+            end_time=end_time,
+            location=address,
+            description=_html_to_text(event.get("description")),
+            source_url=calendar_url,
+            source=source,
+            location_verified=True,
+        )
+        for start_time, end_time in _occurrences(event, today, source)
+    ]
 
 
 def _extract_events(boot_json: dict, location_filter_id: str) -> List[dict]:
@@ -199,9 +206,7 @@ def fetch_plumpjack_events(*, location_filter_id: str, address: str, calendar_ur
 
     events: List[Event] = []
     for raw_event in raw_events:
-        event = _parse_event(raw_event, today, address, calendar_url, source)
-        if event:
-            events.append(event)
+        events.extend(_parse_event(raw_event, today, address, calendar_url, source))
 
     logger.info(f"[{source}] found {len(events)} events")
     return events

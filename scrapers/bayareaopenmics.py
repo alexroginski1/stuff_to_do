@@ -8,9 +8,10 @@ from __future__ import annotations
 #
 # Only SF-city events are kept. Like sf_bar_guide.py, each recurring event is
 # a standing weekly/monthly slot rather than a one-off — but here the site
-# itself has already computed concrete upcoming dates for us, so we just take
-# the soonest upcoming occurrence per event (its first appearance in the feed)
-# instead of computing recurrence math ourselves.
+# itself has already computed concrete upcoming dates for us, so we take every
+# occurrence within the sync engine's lookahead window straight from the feed
+# instead of computing recurrence math ourselves. Each event's detail page is
+# fetched once and reused across its occurrences.
 
 import logging
 import re
@@ -32,6 +33,9 @@ _BASE_URL = "https://bayareaopenmics.com/"
 _FEED_URL = "https://bayareaopenmics.com/feed.html"
 _TZ = ZoneInfo("America/Los_Angeles")
 _CITY = "San Francisco"
+# Small buffer over the sync engine's 14-day lookahead
+# (app/sync_engine.py _LOOKAHEAD_DAYS).
+_HORIZON_DAYS = 16
 
 # Info-grid labels to leave out of the description entirely.
 _SKIP_LABELS = {"Calendar:"}
@@ -139,14 +143,9 @@ def _location_from_where(section: BeautifulSoup, venue: str) -> str:
     return f"{venue}, San Francisco, CA"
 
 
-def _parse_detail_event(detail_url: str, venue: str, occurrence_date: date, feed_time_text: Optional[str]) -> Optional[Event]:
-    try:
-        html_text = _fetch_utf8(detail_url)
-    except Exception as exc:
-        logger.warning(f"[{_SOURCE}] failed to fetch detail page {detail_url}: {exc}")
-        return None
-
-    soup = BeautifulSoup(html_text, "html.parser")
+def _parse_detail_event(
+    detail_url: str, soup: BeautifulSoup, venue: str, occurrence_date: date, feed_time_text: Optional[str]
+) -> Optional[Event]:
     section = soup.select_one("section.detail-container")
     if not section:
         return None
@@ -187,17 +186,20 @@ def _parse_detail_event(detail_url: str, venue: str, occurrence_date: date, feed
     )
 
 
-def _next_sf_occurrences(feed_html: str) -> dict[str, tuple[date, str, Optional[str]]]:
-    """Maps detail_url -> (soonest upcoming date, venue, feed time text) for
-    every recurring SF event in the feed, keeping only each event's earliest
-    (i.e. next) occurrence since day-blocks appear in chronological order."""
+def _sf_occurrences(feed_html: str) -> List[tuple[str, date, str, Optional[str]]]:
+    """(detail_url, date, venue, feed time text) for every SF occurrence in
+    the feed from today through the lookahead horizon."""
     soup = BeautifulSoup(feed_html, "html.parser")
-    next_occurrence: dict[str, tuple[date, str, Optional[str]]] = {}
+    today = datetime.now(tz=_TZ).date()
+    horizon = today + timedelta(days=_HORIZON_DAYS)
+    occurrences: List[tuple[str, date, str, Optional[str]]] = []
 
     for day_div in soup.select("div.feed-day[data-date]"):
         try:
             occurrence_date = date.fromisoformat(day_div["data-date"])
         except ValueError:
+            continue
+        if occurrence_date < today or occurrence_date > horizon:
             continue
 
         for event_div in day_div.select("div.feed-event"):
@@ -211,17 +213,14 @@ def _next_sf_occurrences(feed_html: str) -> dict[str, tuple[date, str, Optional[
                 continue
             detail_url = urljoin(_BASE_URL, href)
 
-            if detail_url in next_occurrence:
-                continue
-
             venue_el = event_div.select_one(".feed-event-venue")
             venue = venue_el.get_text(strip=True) if venue_el else ""
             time_el = event_div.select_one(".feed-event-time")
             time_text = time_el.get_text(strip=True) if time_el else None
 
-            next_occurrence[detail_url] = (occurrence_date, venue, time_text)
+            occurrences.append((detail_url, occurrence_date, venue, time_text))
 
-    return next_occurrence
+    return occurrences
 
 
 def fetch_events() -> List[Event]:
@@ -231,13 +230,26 @@ def fetch_events() -> List[Event]:
         logger.warning(f"[{_SOURCE}] failed to fetch {_FEED_URL}: {exc}")
         return []
 
-    occurrences = _next_sf_occurrences(feed_html)
+    occurrences = _sf_occurrences(feed_html)
 
+    detail_pages: dict[str, Optional[BeautifulSoup]] = {}
     events: List[Event] = []
-    for detail_url, (occurrence_date, venue, time_text) in occurrences.items():
-        event = _parse_detail_event(detail_url, venue, occurrence_date, time_text)
+    for detail_url, occurrence_date, venue, time_text in occurrences:
+        if detail_url not in detail_pages:
+            try:
+                detail_pages[detail_url] = BeautifulSoup(_fetch_utf8(detail_url), "html.parser")
+            except Exception as exc:
+                logger.warning(f"[{_SOURCE}] failed to fetch detail page {detail_url}: {exc}")
+                detail_pages[detail_url] = None
+        soup = detail_pages[detail_url]
+        if soup is None:
+            continue
+        event = _parse_detail_event(detail_url, soup, venue, occurrence_date, time_text)
         if event is not None:
             events.append(event)
 
-    logger.info(f"[{_SOURCE}] parsed {len(events)} SF events from {len(occurrences)} listings")
+    logger.info(
+        f"[{_SOURCE}] parsed {len(events)} SF events from {len(occurrences)} occurrences "
+        f"across {len(detail_pages)} listings"
+    )
     return events

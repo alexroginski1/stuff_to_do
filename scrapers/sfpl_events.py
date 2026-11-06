@@ -24,11 +24,11 @@ _TZ = ZoneInfo("America/Los_Angeles")
 # (by listing date, which is unambiguous unlike the listing's AM/PM-less time
 # range) to keep paginating. Results are sorted chronologically, so as soon
 # as one row is past the horizon, it and everything after it (this page and
-# every later page) is dropped. Small buffer over the sync engine's 7-day
+# every later page) is dropped. Small buffer over the sync engine's 14-day
 # lookahead (app/sync_engine.py _LOOKAHEAD_DAYS) so nothing near the cutoff
 # gets missed to a timezone/date edge.
 _MAX_PAGES = 6
-_HORIZON_DAYS = 9
+_HORIZON_DAYS = 16
 
 # (topic_id, audience_id) query pairs mirroring the site's own filter links
 # for each subcategory. "Community & Neighborhood" is the only one of these
