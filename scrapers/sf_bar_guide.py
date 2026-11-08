@@ -242,20 +242,14 @@ def _parse_bar_events(bar: dict, today: date) -> List[Event]:
             continue
 
         emoji, _label = _classify(f"{event_name} {raw_event.get('notes', '')}")
-        description_parts = []
-        notes = raw_event.get("notes")
-        if notes:
-            description_parts.append(notes)
-        description_parts.append(_FOOTER_LINE)
-        description_parts.append(_VERIFICATION_NOTE)
-
         events.append(
             Event(
                 name=f"{emoji} {event_name}",
                 start_time=datetime.combine(occurrence_date, event_time, tzinfo=_TZ),
                 end_time=None,
                 location=location,
-                description="\n\n".join(description_parts),
+                description=raw_event.get("notes") or None,
+                footer_lines=[_FOOTER_LINE, _VERIFICATION_NOTE],
                 source_url=source_url,
                 source=_SOURCE,
             )

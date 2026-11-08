@@ -22,12 +22,22 @@ def _extract_apollo_state(html_text: str) -> dict:
     return next_data["props"]["pageProps"]["__APOLLO_STATE__"]
 
 
+def _is_placeholder(value: Optional[str]) -> bool:
+    """Venue text hosts use when the real spot isn't announced yet, e.g.
+    "TBD" or "Somewhere in San Francisco"."""
+    v = (value or "").strip().lower()
+    return v in {"tbd", "tba", "tbc"} or v.startswith("somewhere")
+
+
 def _location(apollo: dict, event_raw: dict) -> Optional[str]:
     venue_ref = (event_raw.get("venue") or {}).get("__ref")
     if not venue_ref:
         return None
     venue = apollo.get(venue_ref) or {}
-    parts = [venue.get("address") or venue.get("name"), venue.get("city"), venue.get("state")]
+    place = venue.get("address") or venue.get("name")
+    if _is_placeholder(place) or _is_placeholder(venue.get("name")):
+        return None
+    parts = [place, venue.get("city"), venue.get("state")]
     return ", ".join(p for p in parts if p) or None
 
 

@@ -26,6 +26,20 @@ class Event:
     # and is always reported as location_type "inexact" downstream, instead
     # of letting Places resolve it to a misleadingly precise address.
     location_inexact: bool = field(default=False)
+    # Scraper-supplied notes about the event's provenance (e.g. sf_bar_guide's
+    # "parsed from" line and verification disclaimer) that render below the
+    # calendar body's ―――――――――― separator rather than in the description.
+    # These lines used to be appended to `description` (joined with "\n\n"),
+    # so unique_key folds them back in exactly that way — keeping keys
+    # identical to the old layout, so moving them didn't re-push any events.
+    footer_lines: list[str] = field(default_factory=list)
+
+    @property
+    def _key_description(self) -> str:
+        if not self.footer_lines:
+            return self.description or ""
+        parts = ([self.description] if self.description else []) + self.footer_lines
+        return "\n\n".join(parts)
 
     @property
     def unique_key(self) -> str:
@@ -38,7 +52,7 @@ class Event:
         raw = "|".join([
             self.name,
             self.start_time.isoformat(),
-            self.description or "",
+            self._key_description,
             self.location or "",
         ])
         return hashlib.sha256(raw.encode()).hexdigest()

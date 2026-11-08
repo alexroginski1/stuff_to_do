@@ -138,10 +138,8 @@ def event_time_matches(existing: dict, event: Event) -> bool:
     )
 
 
-_FOOTER = (
-    "\n――――――――――\n"
-    '<a href="https://alexroginski.com/stuff_to_do/">SF Stuff To Do</a>'
-)
+_FOOTER_SEPARATOR = "――――――――――"
+_FOOTER_LINK = '<a href="https://alexroginski.com/stuff_to_do/">SF Stuff To Do</a>'
 
 
 def _price_lines(description: str) -> list[str]:
@@ -213,20 +211,26 @@ def _build_body(event: Event) -> dict:
         parts.append("")
         parts.append(event.description)
 
-    if raw_location:
-        parts.append(f'location provided by event source: "{raw_location}"')
-
     promo_url = src_meta.get("promo_url")
     if promo_url:
         promo_text = src_meta.get("promo_text", "")
         parts.append(f'{promo_text} <a href="{promo_url}">{promo_url}</a>'.strip())
 
+    # Metadata about where the event came from sits below the separator so it
+    # doesn't read as part of the event's own description. This only changes
+    # the calendar body, not Event.unique_key (built from the scraped
+    # description), so existing calendar events aren't re-pushed — only newly
+    # inserted ones pick up this layout.
+    parts.append(_FOOTER_SEPARATOR)
+    if raw_location:
+        parts.append(f'location provided by event source: "{raw_location}"')
+    parts.extend(event.footer_lines)
     attribution = src_meta.get("attribution")
     if attribution:
-        parts.append("")
         parts.append(attribution)
+    parts.append(_FOOTER_LINK)
 
-    description = "\n".join(parts) + _FOOTER
+    description = "\n".join(parts)
     emoji = src_meta.get("emoji", "")
     name_with_price = f"{event.name} ({eventbrite_price})" if eventbrite_price else event.name
     summary = f"{emoji} {name_with_price}" if emoji else name_with_price
