@@ -3,19 +3,43 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import requests
 from bs4 import BeautifulSoup
 
 from app.event_model import Event
+from app.tracked_event_store import EventGone, collect_explore_events
 from app.utils import fetch_html, parse_iso_datetime
 from config.settings import DEFAULT_TIMEZONE
 
 logger = logging.getLogger(__name__)
 
-_SOURCE = Path(__file__).stem
+# Every Partiful-backed source lives in this one module. Each keeps its own
+# source name (config.settings.SOURCES key, with "module": "partiful") so its
+# calendar events stay tagged the same; app/sync_engine.py calls
+# fetch_events(<source name>).
+_EXPLORE_SOURCE = "partiful"
+
+# Host/community pages (partiful.com/u/<user_id>), keyed by source name.
+_HOST_USER_IDS = {
+    "gathersf": "HoM5CgWY4UxtI5vu9HtU",
+    "golden_gate_walk_club": "Uqyv9rLfCdfoExUq88h9",
+    "luz_circle": "9ysLpxe3H5cOS5cOS0uI",
+    "neighbourgood": "96zWlHxa9R49qlpyJKO7",
+    "nob_hill_run_club": "gaH33LxCrvQo0r1F2Y5M",
+    "sf_chess_club": "98UJpsxnnCr8p7cb77hD",
+    "sf_supper_club": "eL7Hrq2H8LxUXbEasEGA",
+    "touch_grass_walk_club": "3Kd8VzusjiFIN0wx4TVs",
+    "web_artists": "DpKsStjnolxJV0zADMiC",
+    "wine_club_sf": "kplE3z7o8Vq9N2O4zKlU",
+}
+
+# Tracked explore events are only re-checked once they start within this
+# many days — a bit past the sync engine's 14-day push window
+# (app/sync_engine.py _LOOKAHEAD_DAYS).
+_HORIZON_DAYS = 16
+
 _URLS = [
     "https://partiful.com/explore/sf",
     "https://partiful.com/explore/sf?tag=music",
@@ -100,8 +124,7 @@ def _to_event(raw: dict, source: str, title_prefix: str = "") -> Event:
 
 
 # ---------------------------------------------------------------------------
-# City-wide "explore" feed (partiful.com/explore/sf) — the default "partiful"
-# source, surfacing whatever Partiful itself is currently promoting.
+# City-wide "explore" feed (partiful.com/explore/sf) — the "partiful" source.
 # ---------------------------------------------------------------------------
 
 def _parse_explore_page(next_data: dict) -> List[dict]:
@@ -124,38 +147,75 @@ def _parse_explore_page(next_data: dict) -> List[dict]:
     return raws
 
 
-def fetch_events() -> List[Event]:
-    events: List[Event] = []
-    seen_ids: set[str] = set()
-
+def _fetch_featured() -> Dict[str, dict]:
+    """Every SF event currently featured across the explore pages, by id."""
+    featured: Dict[str, dict] = {}
     for url in _URLS:
         try:
             raws = _parse_explore_page(_fetch_next_data(url))
         except Exception as exc:
-            logger.warning(f"[{_SOURCE}] failed to fetch {url}: {exc}")
+            logger.warning(f"[{_EXPLORE_SOURCE}] failed to fetch {url}: {exc}")
             continue
-
         for raw in raws:
             event_id = raw.get("id")
-            if event_id in seen_ids:
+            if not event_id or event_id in featured:
                 continue
-            if event_id:
-                seen_ids.add(event_id)
             if not raw.get("start"):
-                logger.warning(f"Skipping event with no start date: {raw.get('id')}")
+                logger.warning(f"Skipping event with no start date: {event_id}")
                 continue
-            try:
-                events.append(_to_event(raw, _SOURCE))
-            except Exception as exc:
-                logger.warning(f"Skipping malformed event {raw.get('id')!r}: {exc}")
+            featured[event_id] = raw
+    return featured
 
+
+def _recheck_event(event_id: str) -> dict:
+    """Refetch a tracked event's page; raise EventGone if it's been deleted,
+    cancelled, or unpublished."""
+    try:
+        next_data = _fetch_next_data(_EVENT_URL.format(event_id=event_id))
+    except requests.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            raise EventGone(event_id) from exc
+        raise
+    event = next_data["props"]["pageProps"].get("event")
+    if not event or event.get("isCancelled") or event.get("cancelledAt") or event.get("status") != "PUBLISHED":
+        raise EventGone(event_id)
+    raw = _extract_raw(event)
+    if not raw.get("start"):
+        raise EventGone(event_id)
+    return raw
+
+
+def _fetch_explore_events() -> List[Event]:
+    """partiful.com/explore/sf, accumulated across runs.
+
+    The explore pages only show a rotating featured subset, so every SF event
+    seen there is remembered (app/tracked_event_store.py) and kept on the
+    calendar until it ends, rather than vanishing as soon as Partiful stops
+    featuring it. Tracked events no longer featured are re-checked against
+    their own event page each run, and dropped if deleted or cancelled.
+    """
+    raws = collect_explore_events(_EXPLORE_SOURCE, _fetch_featured(), _recheck_event, _HORIZON_DAYS)
+    events: List[Event] = []
+    for raw in raws:
+        try:
+            events.append(_to_event(raw, _EXPLORE_SOURCE))
+        except Exception as exc:
+            logger.warning(f"Skipping malformed event {raw.get('id')!r}: {exc}")
     return events
 
 
+def fetch_events(source: str = _EXPLORE_SOURCE) -> List[Event]:
+    if source == _EXPLORE_SOURCE:
+        return _fetch_explore_events()
+    if source not in _HOST_USER_IDS:
+        raise ValueError(f"Unknown Partiful source {source!r} — add it to _HOST_USER_IDS")
+    return fetch_partiful_host_events(_HOST_USER_IDS[source], source)
+
+
 # ---------------------------------------------------------------------------
-# Host/community page (partiful.com/u/<user_id>) — reusable by any scraper
-# that tracks a specific host's published events, analogous to
-# scrapers.heylo.fetch_heylo_events.
+# Host/community page (partiful.com/u/<user_id>) — every _HOST_USER_IDS
+# source. The listing API returns every published event, so unlike the
+# explore feed these need no cross-run tracking.
 # ---------------------------------------------------------------------------
 
 def _fetch_published_listing(user_id: str) -> List[dict]:

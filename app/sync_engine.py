@@ -27,7 +27,7 @@ from app.location_service import location_requires_places, resolve_location, res
 from app.notifier import format_parsing_issues_email, send_error_email
 from app.stats_store import record_stats
 from app.utils import emit_metric
-from config.settings import CALENDARS, CALENDAR_IDS, DEDUP_RULES, DEFAULT_DEDUP_RULE
+from config.settings import CALENDARS, CALENDAR_IDS, DEDUP_RULES, DEFAULT_DEDUP_RULE, SOURCES
 
 logger = logging.getLogger(__name__)
 
@@ -148,8 +148,17 @@ def _filter_events(events: List[Event], days: int = _LOOKAHEAD_DAYS) -> List[Eve
 
 def _fetch_safe(scraper_name: str, calendar_name: str, issues: List[dict]) -> List[Event]:
     try:
-        module = importlib.import_module(f"scrapers.{scraper_name}")
-        events = module.fetch_events()
+        # Sources sharing one scraper module (e.g. every Partiful/Luma page,
+        # see scrapers/partiful.py and scrapers/luma.py) name it via
+        # "module" in SOURCES, and get their source name passed in.
+        # Everything else is a module named after the source itself.
+        shared_module = SOURCES.get(scraper_name, {}).get("module")
+        if shared_module:
+            module = importlib.import_module(f"scrapers.{shared_module}")
+            events = module.fetch_events(scraper_name)
+        else:
+            module = importlib.import_module(f"scrapers.{scraper_name}")
+            events = module.fetch_events()
         logger.info(f"[{scraper_name}] fetched {len(events)} events")
         return events
     except Exception as exc:

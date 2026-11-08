@@ -58,6 +58,11 @@ DEDUP_RULES: dict[str, dict] = {
 
 
 
+# Keyed by source name. By default that's also the scraper module name
+# (scrapers/<name>.py). Entries with "module" instead share one module that
+# serves several sources (e.g. every Partiful/Luma page lives in
+# scrapers/partiful.py / scrapers/luma.py) — its fetch_events(source) is
+# called with the source name.
 SOURCES: dict[str, dict] = {
     "the_faight": {
         "label": "The Faight",
@@ -85,6 +90,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "luma": {
+        "module": "luma",
         "label": "Luma discover page",
         "emoji": "💡",
         "display_url": "https://luma.com/sf",
@@ -162,6 +168,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "luma_muddywaters": {
+        "module": "luma",
         "label": "Muddy Waters Café & Lounge",
         "location": "Mission",
         "location_link": "https://www.google.com/maps/search/?api=1&query=521+Valencia+St%2C+San+Francisco%2C+CA+94110",
@@ -196,6 +203,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "luma_the_commons": {
+        "module": "luma",
         "label": "The Commons: Third Space",
         "location": "Hayes Valley",
         "location_link": "https://maps.app.goo.gl/URPfH9ePaBTm3YRd9",
@@ -205,6 +213,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "luma_future_of_us": {
+        "module": "luma",
         "label": "Future of Us",
         "emoji": "⚡",
         "display_url": "https://luma.com/future-of-us",
@@ -212,6 +221,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "the_sf_contemplarium": {
+        "module": "luma",
         "label": "The SF Contemplarium",
         "emoji": "📓",
         "display_url": "https://luma.com/sfcontemplarium",
@@ -219,6 +229,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "luma_tiat": {
+        "module": "luma",
         "label": "TIAT Art and Tech",
         "location": "Downtown: Powell and O'Farrell",
         "location_link": "https://maps.app.goo.gl/phgTf8BvmnwwKht87",
@@ -228,6 +239,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "partiful": {
+        "module": "partiful",
         "label": "Partiful discover page",
         "emoji": "🥳",
         "display_url": "https://partiful.com/explore/sf",
@@ -372,6 +384,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "luma_grayarea": {
+        "module": "luma",
         "label": "Gray Area",
         "location": "Mission",
         "location_link": "https://www.google.com/maps/search/?api=1&query=2665+Mission+St%2C+San+Francisco%2C+CA+94110",
@@ -418,6 +431,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "sf_climate_action_club": {
+        "module": "luma",
         "label": "SF Climate Action Club",
         "emoji": "🌍",
         "display_url": "https://luma.com/climateactionclub",
@@ -425,6 +439,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "sf_craft_club": {
+        "module": "luma",
         "label": "SF Craft Club",
         "emoji": "🧶",
         "display_url": "https://luma.com/user/sfcraftclub",
@@ -439,6 +454,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "unplug_and_play_collective": {
+        "module": "luma",
         "label": "Unplug and Play Collective",
         "emoji": "📵",
         "display_url": "https://www.unplugandplaycollective.com/",
@@ -510,6 +526,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "nob_hill_run_club": {
+        "module": "partiful",
         "label": "Nob Hill Run Club",
         "emoji": "🏃",
         "display_url": "https://partiful.com/u/gaH33LxCrvQo0r1F2Y5M",
@@ -517,6 +534,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "gathersf": {
+        "module": "partiful",
         "label": "GatherSF",
         "emoji": "👥",
         "display_url": "https://partiful.com/u/HoM5CgWY4UxtI5vu9HtU",
@@ -524,6 +542,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "neighbourgood": {
+        "module": "partiful",
         "label": "Neighbourgood",
         "emoji": "🏘️",
         "display_url": "https://partiful.com/u/96zWlHxa9R49qlpyJKO7",
@@ -531,6 +550,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "web_artists": {
+        "module": "partiful",
         "label": "Web",
         "emoji": "🕸️",
         "display_url": "https://partiful.com/u/DpKsStjnolxJV0zADMiC",
@@ -547,6 +567,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "sf_chess_club": {
+        "module": "partiful",
         "label": "San Francisco Chess Club",
         "emoji": "♟️",
         "display_url": "https://partiful.com/u/98UJpsxnnCr8p7cb77hD",
@@ -554,6 +575,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "touch_grass_walk_club": {
+        "module": "partiful",
         "label": "Touch Grass Walk Club",
         "emoji": "🚶",
         "display_url": "https://partiful.com/u/3Kd8VzusjiFIN0wx4TVs",
@@ -561,6 +583,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "golden_gate_walk_club": {
+        "module": "partiful",
         "label": "Golden Gate Walk Club",
         "emoji": "🚶",
         "display_url": "https://partiful.com/u/Uqyv9rLfCdfoExUq88h9",
@@ -568,6 +591,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "luz_circle": {
+        "module": "partiful",
         "label": "Luz Circle",
         "emoji": "🌀",
         "display_url": "https://partiful.com/u/9ysLpxe3H5cOS5cOS0uI",
@@ -578,6 +602,15 @@ SOURCES: dict[str, dict] = {
         "label": "Board Games with EGL",
         "emoji": "🎲",
         "display_url": "https://www.heylo.com/g/12979145-cf38-42c9-b755-e3a27b458bf9",
+        "calendar": "SF Community",
+        "enabled": True,
+    },
+    "gamescape_board_games": {
+        "label": "Gamescape Board Games",
+        "location": "Lower Haight",
+        "location_link": "https://www.google.com/maps/search/?api=1&query=333+Divisadero+St%2C+San+Francisco%2C+CA+94117",
+        "emoji": "🎲",
+        "display_url": "https://calendar.google.com/calendar/u/0/r?cid=uppeou70069gepba3iggthbrv4@group.calendar.google.com",
         "calendar": "SF Community",
         "enabled": True,
     },
@@ -977,6 +1010,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "sf_supper_club": {
+        "module": "partiful",
         "label": "SF Supper Club",
         "emoji": "🍽️",
         "display_url": "https://partiful.com/u/eL7Hrq2H8LxUXbEasEGA",
@@ -984,6 +1018,7 @@ SOURCES: dict[str, dict] = {
         "enabled": True,
     },
     "wine_club_sf": {
+        "module": "partiful",
         "label": "Wine Club SF",
         "emoji": "🍷",
         "display_url": "https://partiful.com/u/kplE3z7o8Vq9N2O4zKlU",
